@@ -1,0 +1,24 @@
+{
+  "pages": {
+    "/(dashboard)/customers/page": [
+      "static/chunks/_fd6ad7._.js",
+      "static/chunks/app_favicon_ico_mjs_a9e1d2._.js",
+      "static/chunks/app_globals_73c377.css",
+      "static/chunks/_7329cb._.js",
+      "static/chunks/app_layout_tsx_6c0f3e._.js",
+      "static/chunks/node_modules__pnpm_19a18d._.js",
+      "static/chunks/_68e662._.js",
+      "static/chunks/app_(dashboard)_layout_tsx_909203._.js",
+      "static/chunks/app_(dashboard)_error_tsx_35572d._.js",
+      "static/chunks/app_(dashboard)_error_tsx_a48631._.js",
+      "static/chunks/6fed0_next_dist_compiled_react-dom_711c34._.js",
+      "static/chunks/6fed0_next_dist_compiled_b5db12._.js",
+      "static/chunks/6fed0_next_dist_client_8a8f70._.js",
+      "static/chunks/6fed0_next_dist_6b7ec8._.js",
+      "static/chunks/90823_@swc_helpers_cjs_6ab2e1._.js",
+      "static/chunks/[turbopack]_browser_dev_hmr-client_hmr-client_ts_9d2627._.js",
+      "static/chunks/_c4c472._.js",
+      "static/chunks/_49853a._.js"
+    ]
+  }
+}

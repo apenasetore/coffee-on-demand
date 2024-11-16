@@ -1,0 +1,18 @@
+const CHUNK_PUBLIC_PATH = "server/app/(dashboard)/page.js";
+const runtime = require("../../chunks/ssr/[turbopack]_runtime.js");
+runtime.loadChunk("server/chunks/ssr/6fed0_next_dist_3ff67e._.js");
+runtime.loadChunk("server/chunks/ssr/[root of the server]__ea5163._.js");
+runtime.loadChunk("server/chunks/ssr/app_db13a2._.js");
+runtime.loadChunk("server/chunks/ssr/_638727._.js");
+runtime.loadChunk("server/chunks/ssr/app_globals_73c377.css");
+runtime.loadChunk("server/chunks/ssr/node_modules__pnpm_ff4260._.js");
+runtime.loadChunk("server/chunks/ssr/[root of the server]__734e52._.js");
+runtime.loadChunk("server/chunks/ssr/6fed0_next_29e50f._.js");
+runtime.loadChunk("server/chunks/ssr/fd55b_@auth_core_c69dcd._.js");
+runtime.loadChunk("server/chunks/ssr/0f58f_jose_dist_node_esm_25ac65._.js");
+runtime.loadChunk("server/chunks/ssr/node_modules__pnpm_8a7f69._.js");
+runtime.loadChunk("server/chunks/ssr/app_(dashboard)_error_tsx_d20cd4._.js");
+runtime.loadChunk("server/chunks/ssr/node_modules__pnpm_174c03._.js");
+runtime.loadChunk("server/chunks/ssr/_64be67._.js");
+runtime.getOrInstantiateRuntimeModule("[project]/.next-internal/server/app/(dashboard)/page/actions.js { ACTIONS_MODULE0 => \"[project]/app/(dashboard)/actions.ts [app-rsc] (ecmascript)\", ACTIONS_MODULE1 => \"[project]/app/(dashboard)/user.tsx [app-rsc] (ecmascript)\" } [app-rsc] (ecmascript)", CHUNK_PUBLIC_PATH);
+module.exports = runtime.getOrInstantiateRuntimeModule("[project]/node_modules/.pnpm/next@15.0.0-rc.1_react-dom@19.0.0-rc-cd22717c-20241013_react@19.0.0-rc-cd22717c-20241013__rea_sjig2s3n3wyjmhhbbzmei52ggi/node_modules/next/dist/esm/build/templates/app-page.js?page=/(dashboard)/page { METADATA_0 => \"[project]/app/favicon.ico.mjs { IMAGE => \\\"[project]/app/favicon.ico [app-rsc] (static)\\\" } [app-rsc] (structured image object, ecmascript, Next.js server component)\", MODULE_1 => \"[project]/app/layout.tsx [app-rsc] (ecmascript, Next.js server component)\", MODULE_2 => \"[project]/node_modules/.pnpm/next@15.0.0-rc.1_react-dom@19.0.0-rc-cd22717c-20241013_react@19.0.0-rc-cd22717c-20241013__rea_sjig2s3n3wyjmhhbbzmei52ggi/node_modules/next/dist/client/components/not-found-error.js [app-rsc] (ecmascript, Next.js server component)\", MODULE_3 => \"[project]/app/(dashboard)/layout.tsx [app-rsc] (ecmascript, Next.js server component)\", MODULE_4 => \"[project]/app/(dashboard)/error.tsx [app-rsc] (ecmascript, Next.js server component)\", MODULE_5 => \"[project]/node_modules/.pnpm/next@15.0.0-rc.1_react-dom@19.0.0-rc-cd22717c-20241013_react@19.0.0-rc-cd22717c-20241013__rea_sjig2s3n3wyjmhhbbzmei52ggi/node_modules/next/dist/client/components/not-found-error.js [app-rsc] (ecmascript, Next.js server component)\", MODULE_6 => \"[project]/app/(dashboard)/page.tsx [app-rsc] (ecmascript, Next.js server component)\" } [app-rsc] (ecmascript)", CHUNK_PUBLIC_PATH).exports;

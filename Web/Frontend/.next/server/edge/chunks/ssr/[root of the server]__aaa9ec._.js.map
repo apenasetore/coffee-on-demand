@@ -1,0 +1,9 @@
+{
+  "version": 3,
+  "sources": [],
+  "sections": [
+    {"offset": {"line": 23, "column": 0}, "map": {"version":3,"sources":["turbopack://[project]/lib/auth.ts"],"sourcesContent":["import NextAuth from 'next-auth';\nimport GitHub from 'next-auth/providers/github';\n\nexport const { handlers, signIn, signOut, auth } = NextAuth({\n  providers: [GitHub]\n});\n"],"names":[],"mappings":";;;;;;AAAA;AACA;AADA;AACA;;;AAEO,MAAM,EAAE,QAAQ,EAAE,MAAM,EAAE,OAAO,EAAE,IAAI,EAAE,GAAG,CAAA,GAAA,6WAAA,CAAA,UAAQ,AAAD,EAAE;IAC1D,WAAW;QAAC,iNAAA,CAAA,UAAM;KAAC;AACrB"}},
+    {"offset": {"line": 40, "column": 0}, "map": {"version":3,"sources":[],"names":[],"mappings":"A"}},
+    {"offset": {"line": 46, "column": 0}, "map": {"version":3,"sources":["turbopack://[project]/middleware.ts"],"sourcesContent":["export { auth as middleware } from '@/lib/auth';\n\n// Don't invoke Middleware on some paths\nexport const config = {\n  matcher: ['/((?!api|_next/static|_next/image|favicon.ico).*)']\n};\n"],"names":[],"mappings":";;;;AAGO,MAAM,SAAS;IACpB,SAAS;QAAC;KAAoD;AAChE"}},
+    {"offset": {"line": 55, "column": 0}, "map": {"version":3,"sources":[],"names":[],"mappings":"A"}}]
+}
