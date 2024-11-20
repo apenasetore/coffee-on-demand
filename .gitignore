@@ -87,3 +87,4 @@ mediafiles/
 
 # Local config files
 *.local
+**/.DS_Store
