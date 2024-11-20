@@ -2,11 +2,11 @@ import RPi.GPIO as GPIO
 import time
 
 # Configuração dos pinos GPIO
-DIR_PIN = 8  # Pino GPIO para direção
-STEP_PIN = 9  # Pino GPIO para passos
-MS1_PIN = 10 
-MS2_PIN = 11 
-MS3_PIN = 12 
+DIR_PIN = 2  # Pino GPIO para direção
+STEP_PIN = 3  # Pino GPIO para passos
+MS1_PIN = 22 
+MS2_PIN = 27 
+MS3_PIN = 17 
 
 # Configuração dos parâmetros do motor
 STEPS_PER_REV = 200  # Passos por revolução (1.8° por passo no modo full-step)
