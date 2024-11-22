@@ -2,13 +2,19 @@ import time
 import asyncio
 import edge_tts
 import io
+import voice_detection as vd
+import os
 
+from dotenv import load_dotenv
 from pathlib import Path
 from openai import OpenAI
-import voice_detection as vd
 
+
+load_dotenv()
+API_KEY = os.getenv("API_KEY")
+print(API_KEY)
 client = OpenAI(
-  api_key='',
+  api_key=API_KEY,
 )
 
 
@@ -57,14 +63,14 @@ def synthesize_speech(text):
     
 # Main function to bring it all together
 def main(file_path):
-   
+ 
     # Step 1: Transcribe the audio
     start_time = time.time()
     transcription = transcribe_audio(file_path)
     print("Transcription:", transcription)
     end_time_1 = time.time()
     print('Transcription Time',end_time_1-start_time)
-   
+
     # Step 2: Generate a response based on the transcription
     response_text = generate_response(transcription)
     print("Response:", response_text)
@@ -79,6 +85,6 @@ def main(file_path):
     # print('All Time',end_time_3-start_time)
         
 
-# Example usage
+        # Example usage
 vd.voice_detection()
 main("gravacao.wav")
