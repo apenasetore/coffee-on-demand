@@ -1,12 +1,14 @@
 import time
 import asyncio
 import edge_tts
+import io
 
 from pathlib import Path
 from openai import OpenAI
+import voice_detection as vd
 
 client = OpenAI(
-  api_key='sk-tKTLGC4ztTRV5PJjP-Vwjbm3_b1-vlk1-cKOJHrz9tT3BlbkFJkJTxhoh1HN8wyMx33ick31C9AN2lbzAhSnqGzQ2dcA',
+  api_key='',
 )
 
 
@@ -78,4 +80,5 @@ def main(file_path):
         
 
 # Example usage
-main("/home/etore/CoffeOnDemand/voiceMessage.mp3")
+vd.voice_detection()
+main("gravacao.wav")
