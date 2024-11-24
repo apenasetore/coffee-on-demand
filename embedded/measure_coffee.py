@@ -36,7 +36,7 @@ def dispense_task(measure_coffee_queue: multiprocessing.Queue, coffee_container,
             print(f"Weight = {weight}")
             hx.power_down()
             hx.power_up()
-            time.sleep(1)
+            time.sleep(0.2)
 
         turn_on_motor_event_flag.clear()
         

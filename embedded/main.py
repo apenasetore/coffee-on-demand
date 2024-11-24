@@ -28,7 +28,7 @@ if __name__ == "__main__":
         while True:
             print("Initing order")
             time.sleep(2)
-            measure_coffee_queue.put({"container_id": 1, "weight": 100})
+            measure_coffee_queue.put({"container_id": 1, "weight": 45})
             time.sleep(10000)
     except KeyboardInterrupt:
         print("Finishing...")

@@ -103,21 +103,26 @@ def motor_task(turn_on_motor_event_flag, coffee_container):
             dir_pin = coffee_configs[coffee_index]["DIR_PIN"]
             step_pin = coffee_configs[coffee_index]["STEP_PIN"]
 
-        print("Forward")
+        if turn_on_motor_event_flag.is_set():
+            print("Forward")
+            for i in range(400):
+                if not turn_on_motor_event_flag.is_set():
+                    break
+                GPIO.output(dir_pin, GPIO.HIGH)
+                GPIO.output(step_pin, GPIO.HIGH)
+                time.sleep(delay)
+                GPIO.output(step_pin, GPIO.LOW)
+                time.sleep(delay)
 
-        for i in range(400):
-            GPIO.output(dir_pin, GPIO.HIGH)
-            GPIO.output(step_pin, GPIO.HIGH)
-            time.sleep(delay)
-            GPIO.output(step_pin, GPIO.LOW)
-            time.sleep(delay)
+        if turn_on_motor_event_flag.is_set():
+            print("Backwards")
+            for i in range(300):
+                if not turn_on_motor_event_flag.is_set():
+                    break
 
-        print("Backwards")
-
-        for i in range(300):
-            GPIO.output(dir_pin, GPIO.LOW)
-            GPIO.output(step_pin, GPIO.HIGH)
-            time.sleep(delay)
-            GPIO.output(step_pin, GPIO.LOW)
-            time.sleep(delay)
+                GPIO.output(dir_pin, GPIO.LOW)
+                GPIO.output(step_pin, GPIO.HIGH)
+                time.sleep(delay)
+                GPIO.output(step_pin, GPIO.LOW)
+                time.sleep(delay)
 
