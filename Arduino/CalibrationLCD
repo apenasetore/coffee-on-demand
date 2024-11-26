@@ -1,0 +1,11 @@
+*** COPY-PASTE from Serial Terminal:
+const int XP=8,XM=A2,YP=A3,YM=9; //240x400 ID=0x7793
+const int TS_LEFT=861,TS_RT=148,TS_TOP=70,TS_BOT=934;
+
+PORTRAIT  CALIBRATION     240 x 400
+x = map(p.x, LEFT=861, RT=148, 0, 240)
+y = map(p.y, TOP=70, BOT=934, 0, 400)
+
+LANDSCAPE CALIBRATION     400 x 240
+x = map(p.y, LEFT=70, RT=934, 0, 400)
+y = map(p.x, TOP=148, BOT=861, 0, 240)
