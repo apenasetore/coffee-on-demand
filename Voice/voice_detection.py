@@ -2,11 +2,12 @@ import pyaudio
 import numpy as np
 import wave
 
+
 # Configurações
 CHANNELS = 1
 RATE = 48000
 CHUNK = 1024
-THRESHOLD = 50  # Ajuste o valor conforme necessário para a detecção correta
+THRESHOLD = 70  # Ajuste o valor conforme necessário para a detecção correta
 
 def voice_detection():
     print("Iniciando aplicação...")
@@ -36,13 +37,13 @@ def voice_detection():
             # Converte os dados para um array NumPy
             audio_data = np.frombuffer(data, dtype=np.int16)
             rms = calculate_rms(audio_data)  # Calcula o volume (RMS)
-            print(f"RMS: {rms}")
+            # print(f"RMS: {rms}")
 
             if rms < THRESHOLD:
-                print(f"Voz detectada! (RMS: {rms})")
+                # print(f"Voz detectada! (RMS: {rms})")
                 audio_data_vector.append(audio_data)
             else:
-                print("Silêncio.")
+                # print("Silêncio.")
                 count_silencio += 1
                 if count_silencio < 10:
                     continue
