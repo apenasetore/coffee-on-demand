@@ -11,11 +11,20 @@ from pathlib import Path
 from openai import OpenAI
 from pydantic import BaseModel
 
+
 load_dotenv()
 API_KEY = os.getenv("API_KEY")
 client = OpenAI(
   api_key=API_KEY,
 )
+class ResponseFormat(BaseModel):
+    inPhase: bool
+    message: str
+
+class ResponseStopFormat(BaseModel):
+    stop: bool
+    message: str
+    reason: str
 
 
 def transcribe_audio(file_path):
@@ -28,30 +37,75 @@ def transcribe_audio(file_path):
     )
     return transcript.text
 
+def get_typed_input(prompt="Enter your input: "):
+    """
+    Prompts the user to type input from the terminal.
+    
+    Args:
+        prompt (str): The message displayed to the user.
+    
+    Returns:
+        str: The text entered by the user.
+    """
+    try:
+        # Prompt the user and return their input
+        return input(prompt)
+    except KeyboardInterrupt:
+        print("\nInput interrupted. Exiting.")
+        return None  # Return None if the user interrupts
 
-# Function to generate a response using ChatGPT
-def generate_response(messages, phase_prompt):
 
-    class ResponseFormat(BaseModel):
-        inPhase: bool
-        message: str
+
+def has_to_stop(messages, phase_prompt):
+    # print("Messages",messages)
+   
     
     response = client.beta.chat.completions.parse(
                 model="gpt-4o",
-                messages=[
-                    {"role": "system", "content": f'''You are a coffee grain vending machine with 4 types of grains available. 
-                     Respond to this text according to the phase instructions. 
-                     {phase_prompt}.
-                     Continue this convesation with the user.
-                     {messages}'''},
-                    ],
+                    messages=[
+                        {"role": "system", "content": f'''You are a coffee grain vending machine with 4 types of grains available. 
+                         You provide only coffee grains and can register users with their consent.  
+                         Respond to this text according to the phase instructions: 
+                         {phase_prompt}.  
+                         Continue this conversation with the user.
+                         '''}  
+                        ] + (messages if len(messages) else []),
+                    
+                response_format=ResponseStopFormat
+    )
+    response = json.loads(response.choices[0].message.content)
+    # print(response)
+    in_phase = response['stop']
+    message = response['message'] 
+    reason = response['reason']
+    # print(in_phase, message)
+    # print('Message',message)
+    return in_phase, message, reason
+
+
+# Function to generate a response using ChatGPT
+def generate_response(messages, phase_prompt):
+    # print("Messages",messages)
+   
+    
+    response = client.beta.chat.completions.parse(
+                model="gpt-4o",
+                    messages=[
+                        {"role": "system", "content": f'''You are a coffee grain vending machine with 4 types of grains available.  
+                        Respond to this text according to the phase instructions. 
+                        {phase_prompt}.
+                        Continue this convesation with the user.
+                        '''}
+                        ] + (messages if len(messages) else []),
+                    
                 response_format=ResponseFormat
     )
     response = json.loads(response.choices[0].message.content)
-    print(response)
+    # print(response)
     in_phase = response['inPhase']
     message = response['message'] 
-    print(in_phase, message)
+    # print(in_phase, message)
+    # print('Message',message)
     return in_phase, message
 
 # Function to convert text to speech using OpenAI's TTS API
@@ -93,11 +147,13 @@ def main(file_path):
     # print('Synthesize T
     # ime',end_time_3-end_time_2)
     # print('All Time',end_time_3-start_time)
-        
+
+def append_message(role, content):
+    messages.append({"role": role, "content": content})     
 
 if __name__ == "__main__":
 
-    prompt = [
+    phase_prompt = [
     {
         "name": "IntroductionState",
         "goal": "Present to the user and ask how you can help.",
@@ -129,27 +185,60 @@ if __name__ == "__main__":
         "guideline": "Say goodbye to the customer."
     }
     ]
+    stop_prompt = [
+    {
+        "name": "Iconmpatível",
+        "goal": "Determine if the user is asking something that is not coffee or available.",
+        "guideline": "Say that the machine does not provide what the user wants, the reason why and  to try again later"
+    },
+    {
+        "name": "Desinterested",
+        "goal": "The user is not more interested in buying coffee.",
+        "guideline": "Say goodbye to the customer."
+    }
+    ]
+
 
     messages = []
-    for state in prompt:
-        print(messages)
-        print(f"State: {state['name']}")
-        print(f"Goal: {state['goal']}")
-        print(f"Guideline: {state['guideline']}")
-        print("\n")
-        phase_prompt = f"Verify if the current phase is {state['name']}. The phase's goal is {state['goal']}. Return true in inPhase in case the phase goal has not been accomplished. Return false in case the objective has been accomplished. To reach the goal, you must {state['guideline']}."
-        
-        in_phase, message = generate_response(messages, phase_prompt)
-        if (in_phase):
-            messages.append(f"Machine: {message}")
-            print(messages)
-        else:
-            break
-        
-        vd.voice_detection()
-        transcription = transcribe_audio('gravacao.wav')
-        print(transcription)
-        messages.append(f"Client: {transcription}")
+    stop = False
+    
+    while(not stop):
+            
+        for state in phase_prompt:    
+            prompt = f"Verify if the current phase is {state['name']}. The phase's goal is {state['goal']}. Return true in inPhase in case the phase goal has not been accomplished. Return false in case the objective has been accomplished. To reach the goal, you must {state['guideline']}."
+            
+            in_phase, message = generate_response(messages, prompt)
+            if (in_phase):
+                print(f"State: {state['name']}")
+                print(f"Goal: {state['goal']}")
+                print(f"Guideline: {state['guideline']}")
+                print("\n")
+                append_message('system',message)
+                print(messages)
+                break
 
+        print(message)
+        transcription = get_typed_input()
+        # print('Transcription',transcription)
+        append_message('user', transcription)
+        # print(stop)
+        
+        for sp in stop_prompt:
+            prompt = f"Verify if the current the reason to stop is {sp['name']}. To determine that  {sp['goal']}. Return true in stop in case the conversation must stop. To determine it, you must {sp['guideline']}., only generate a message if stop is True"
+            stop, message, reason = has_to_stop(messages,prompt)
+            
+            if stop:
+                append_message('system', message)
+                print(f"State: {sp['name']}")
+                print(f"Goal: {sp['goal']}")
+                print(f"Guideline: {sp['guideline']}")
+                print("\n")
+
+                append_message('system',message)
+                break
+        
+        # vd.voice_detection()
+        # transcription = transcribe_audio('gravacao.wav')
+        
         
         
