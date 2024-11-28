@@ -13,7 +13,6 @@ FORMAT = pyaudio.paInt16
 CHANNELS = 1
 RATE = 16000
 CHUNK = int(RATE * CHUNK_DURATION_MS / 1000)
-OUTPUT_FILENAME="nao_sei.wav"
 
 def amplify_audio(data, amplification_factor):
     amplified_data = data * amplification_factor
@@ -31,7 +30,7 @@ def capture_audio(audio_queue: multiprocessing.Queue, capture_audio_event_flag):
 
     while True:
 
-        audio_buffer = io.BytesIO()
+        frames = []
         recording = False
         silent = 0
 
@@ -43,7 +42,7 @@ def capture_audio(audio_queue: multiprocessing.Queue, capture_audio_event_flag):
                 audio_data_np = np.frombuffer(data, dtype=np.int16)
                 amplified_audio = amplify_audio(audio_data_np, amplification_factor=10.0)
                 amplified_bytes = amplified_audio.astype(np.int16).tobytes()
-                audio_buffer.write(amplified_bytes)
+                frames.append(amplified_bytes)
 
             is_speech = vad.is_speech(data, RATE)
             if is_speech and not recording:
@@ -59,5 +58,5 @@ def capture_audio(audio_queue: multiprocessing.Queue, capture_audio_event_flag):
                         silent = 0
                         print("End of speech")
                         capture_audio_event_flag.clear()
-                        audio_queue.put(audio_buffer)
-                        audio_buffer = io.BytesIO()
+                        audio_queue.put(frames)
+                        frames = []
