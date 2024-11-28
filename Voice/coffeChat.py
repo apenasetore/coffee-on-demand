@@ -5,7 +5,10 @@ import io
 import voice_detection as vd
 import os
 import json
+import tempfile
 
+from playsound import playsound
+from gtts import gTTS
 from dotenv import load_dotenv
 from pathlib import Path
 from openai import OpenAI
@@ -141,12 +144,22 @@ def main(file_path):
     end_time_2 = time.time()
     print('Generate Time Time',end_time_2-end_time_1)
     
-    # # Step 3: Synthesize the response as audio
+    # Step 3: Synthesize the response as audio
     # synthesize_speech(response_text)
     # end_time_3 = time.time()
     # print('Synthesize T
     # ime',end_time_3-end_time_2)
     # print('All Time',end_time_3-start_time)
+
+async def speak_message(message):
+    
+    audio = gTTS(text=message,lang='en',slow=False)
+    with tempfile.NamedTemporaryFile(delete=True, suffix=".mp3") as temp_audio:
+            audio.save(temp_audio.name)  # Salvar no arquivo temporário
+            playsound(temp_audio.name)
+   
+
+
 
 def append_message(role, content):
     messages.append({"role": role, "content": content})     
@@ -217,9 +230,13 @@ if __name__ == "__main__":
                 print(messages)
                 break
 
+        asyncio.run(speak_message(message))
         print(message)
+    
+        # vd.voice_detection()
+        # transcription = transcribe_audio('gravacao.wav')
         transcription = get_typed_input()
-        # print('Transcription',transcription)
+        print('Transcription',transcription)
         append_message('user', transcription)
         # print(stop)
         
@@ -237,8 +254,7 @@ if __name__ == "__main__":
                 append_message('system',message)
                 break
         
-        # vd.voice_detection()
-        # transcription = transcribe_audio('gravacao.wav')
+       
         
         
         
