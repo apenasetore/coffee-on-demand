@@ -20,7 +20,7 @@ def voice_detection():
         frames_per_buffer=CHUNK
     )
 
-    print("Pronto para detectar fala. Pressione Ctrl+C para sair.")
+    # print("Pronto para detectar fala. Pressione Ctrl+C para sair.")
     audio_data_vector = []
     count_silencio = 0
 
