@@ -1,7 +1,9 @@
 import multiprocessing
 import time
-
+import tempfile
+from gtts import gTTS
 import pyaudio
+from playsound import playsound
 
 from embedded.audio import CHANNELS, FORMAT, RATE
 
@@ -18,7 +20,13 @@ def generate_response(customer_queue: multiprocessing.Queue, audio_queue: multip
         customer = customer_queue.get()
         print(f"GPT task received info that customer {customer} arrived")
         time.sleep(1)
-        print(f"Hello {customer}! It's nice to have you in my store, how can i help you today?")
+        
+        text = f"Hello {customer}! It's nice to have you in my store, how can i help you today?"
+        audio = gTTS(text=text, lang='en', slow=False)
+        with tempfile.NamedTemporaryFile(delete=True, suffix=".mp3") as temp_audio:
+            audio.save(temp_audio.name)
+            playsound(temp_audio.name)
+
         time.sleep(1)
         capture_audio_event_flag.set()
 
