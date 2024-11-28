@@ -7,7 +7,7 @@ import tempfile
 from dotenv import load_dotenv
 from gtts import gTTS
 import wave
-from embedded.gpt_dtos.dto import ResponseFormat
+from embedded.gpt_dtos.dto import ResponseFormat, ResponseStopFormat
 from playsound import playsound
 
 from openai import OpenAI
@@ -19,7 +19,7 @@ load_dotenv()
 API_KEY = os.getenv("API_KEY")
 client = OpenAI(api_key=API_KEY)
 
-def generate_response(customer_queue: multiprocessing.Queue, audio_queue: multiprocessing.Queue, capture_audio_event_flag, recognize_customer_event_flag):
+def generate_response(customer_queue: multiprocessing.Queue, audio_queue: multiprocessing.Queue, measure_coffee_queue: multiprocessing.Queue, capture_audio_event_flag, recognize_customer_event_flag):
     phase_prompt = [
         {
             "name": "IntroductionState",
@@ -56,7 +56,7 @@ def generate_response(customer_queue: multiprocessing.Queue, audio_queue: multip
         {
             "name": "Incompatible",
             "goal": "Determine if the user is asking something that is not coffee or available.",
-            "guideline": "Say that the machine does not provide what the user wants, the reason why and  to try again later"
+            "guideline": "Say that the machine does not provide what the user wants, the reason why and to try again later"
         },
         {
             "name": "Desinterested",
@@ -65,9 +65,9 @@ def generate_response(customer_queue: multiprocessing.Queue, audio_queue: multip
         }
     ]
     
-    finished_conversation = False
     while True:
         customer = customer_queue.get()
+        finished_conversation = False
         print(f"GPT task received info that customer {customer} arrived")
 
         history = []
@@ -82,9 +82,14 @@ def generate_response(customer_queue: multiprocessing.Queue, audio_queue: multip
                     print(f"Guideline: {state['guideline']}")
                     print(f"Response: {response}")
                     history.append({"role": "system", "content": response})
-                    break
+                    if state["name"] == "GoodbyeState":
+                        finished_conversation = True
 
+                    break
+                
             play_audio(response)
+            if finished_conversation:
+                break
             try:
                 capture_audio_event_flag.set()
                 audio_buffer = audio_queue.get(timeout=20)
@@ -97,6 +102,20 @@ def generate_response(customer_queue: multiprocessing.Queue, audio_queue: multip
             
             user_response = transcript(audio_buffer)
             history.append({"role": "user", "content": user_response})
+
+            for sp in stop_prompt:
+                prompt = f"Verify if the current the reason to stop is {sp['name']}. To determine that  {sp['goal']}. Return true in stop in case the conversation must stop. To determine it, you must {sp['guideline']}., only generate a message if stop is True"
+                stop, response, reason = has_to_stop(history, prompt)
+
+                if stop:
+                    print(f"State: {sp['name']}")
+                    print(f"Goal: {sp['goal']}")
+                    print(f"Guideline: {sp['guideline']}")
+                    history.append({"role": "system", "content": response})
+                    play_audio(response)
+                    finished_conversation = True
+                    recognize_customer_event_flag.set()
+                    break
 
 def request(history: list, phase_prompt: str) -> tuple:
     response = client.beta.chat.completions.parse(
@@ -118,6 +137,27 @@ def request(history: list, phase_prompt: str) -> tuple:
 
     return in_phase, message
 
+def has_to_stop(history: list, phase_prompt: str) -> tuple:
+    response = client.beta.chat.completions.parse(
+        model="gpt-4o",
+            messages=[
+                {"role": "system", "content": f'''You are a coffee grain vending machine with 4 types of grains available. 
+                    You provide only coffee grains and can register users with their consent.  
+                    Respond to this text according to the phase instructions: 
+                    {phase_prompt}.  
+                    Continue this conversation with the user.
+                    '''}  
+                ] + (history if len(history) else []),
+            
+        response_format=ResponseStopFormat
+    )
+    response = json.loads(response.choices[0].message.content)
+    stop = response['stop']
+    message = response['message'] 
+    reason = response['reason']
+
+    return stop, message, reason
+
 def transcript(audio: list) -> str:
     with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as temp_audio_file:
         with wave.open(temp_audio_file, 'wb') as wf:
@@ -131,7 +171,8 @@ def transcript(audio: list) -> str:
         
         transcript = client.audio.transcriptions.create(
             model="whisper-1",
-            file=file
+            file=file,
+            language="en"
         )
         user_response = transcript.text
 

@@ -26,7 +26,7 @@ if __name__ == "__main__":
     #multiprocessing.Process(target=dispense_task, daemon=True, args=(measure_coffee_queue, coffee_container, turn_on_motor_event_flag)).start()
     multiprocessing.Process(target=recognize_customer, args=(recognize_customer_event_flag, customer_queue), daemon=True).start()
     multiprocessing.Process(target=capture_audio, daemon=True, args=(audio_queue, capture_audio_event_flag)).start()
-    multiprocessing.Process(target=generate_response, daemon=True, args=(customer_queue, audio_queue, capture_audio_event_flag, recognize_customer_event_flag)).start()
+    multiprocessing.Process(target=generate_response, daemon=True, args=(customer_queue, audio_queue, measure_coffee_queue, capture_audio_event_flag, recognize_customer_event_flag)).start()
 
     try:
         while True:
