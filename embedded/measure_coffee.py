@@ -8,7 +8,7 @@ DT_PIN = 5
 SCK_PIN = 6
 
 
-def dispense_task(measure_coffee_queue: multiprocessing.Queue, coffee_container, turn_on_motor_event_flag):
+def dispense_task(measure_coffee_queue: multiprocessing.Queue, recognize_customer_event_flag, coffee_container, turn_on_motor_event_flag):
     hx = HX711(DT_PIN, SCK_PIN)
     print("Setting up load cell")
     referenceUnit =  -401339.77777777775/211
@@ -39,6 +39,7 @@ def dispense_task(measure_coffee_queue: multiprocessing.Queue, coffee_container,
             time.sleep(0.2)
 
         turn_on_motor_event_flag.clear()
+        recognize_customer_event_flag.set()
         
 
 

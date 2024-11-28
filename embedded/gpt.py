@@ -12,7 +12,7 @@ from playsound import playsound
 
 from openai import OpenAI
 
-from embedded.audio import CHANNELS, FORMAT, RATE
+from embedded.audio import CHANNELS, RATE
 
 
 load_dotenv()
@@ -39,7 +39,7 @@ def generate_response(customer_queue: multiprocessing.Queue, audio_queue: multip
         {
             "name": "PaymentState",
             "goal": "Get confirmation from the user about the order and payment.",
-            "guideline": "Confirm the order with the user by repeating it for them. Tell the price and ask for confirmation."
+            "guideline": "Confirm the order with the user by repeating it for them. Tell the price and ask for confirmation. Returns in quantity the amount of coffee the user required"
         },
         {
             "name": "RegisterState",
@@ -68,6 +68,7 @@ def generate_response(customer_queue: multiprocessing.Queue, audio_queue: multip
     while True:
         customer = customer_queue.get()
         finished_conversation = False
+        quantity = 0
         print(f"GPT task received info that customer {customer} arrived")
 
         history = []
@@ -75,7 +76,7 @@ def generate_response(customer_queue: multiprocessing.Queue, audio_queue: multip
             for state in phase_prompt:    
                 prompt = f"Verify if the current phase is {state['name']}. The phase's goal is {state['goal']}. Return true in inPhase in case the phase goal has not been accomplished. Return false in case the objective has been accomplished. To reach the goal, you must {state['guideline']}. Be objective in responses, with minimum words"
                 
-                in_phase, response = request(history, prompt)
+                in_phase, response, quantity = request(history, prompt)
                 if (in_phase):
                     print(f"State: {state['name']}")
                     print(f"Goal: {state['goal']}")
@@ -89,6 +90,7 @@ def generate_response(customer_queue: multiprocessing.Queue, audio_queue: multip
                 
             play_audio(response)
             if finished_conversation:
+                measure_coffee_queue.put({"container_id": 1, "weight": quantity})
                 break
             try:
                 capture_audio_event_flag.set()
@@ -133,9 +135,10 @@ def request(history: list, phase_prompt: str) -> tuple:
     response = json.loads(response.choices[0].message.content)
 
     in_phase = response["in_phase"]
-    message = response["message"] 
+    message = response["message"]
+    quantity = response["quantity"] 
 
-    return in_phase, message
+    return in_phase, message, quantity
 
 def has_to_stop(history: list, phase_prompt: str) -> tuple:
     response = client.beta.chat.completions.parse(
