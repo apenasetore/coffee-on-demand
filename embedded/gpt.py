@@ -9,7 +9,7 @@ from gtts import gTTS
 import wave
 from embedded.gpt_dtos.dto import ResponseFormat, ResponseStopFormat
 from playsound import playsound
-
+import pygame
 from openai import OpenAI
 
 from embedded.audio import CHANNELS, RATE
@@ -186,8 +186,12 @@ def play_audio(text: str):
     print("Text to speech...")
     audio = gTTS(text=text, lang='en', slow=False)
     print("Completed transformation")
+    pygame.mixer.init()
     with tempfile.NamedTemporaryFile(delete=True, suffix=".mp3") as temp_audio:
         audio.save(temp_audio.name)
-        playsound(temp_audio.name)
+        pygame.mixer.music.load(temp_audio.name)
+        pygame.mixer.music.play()
+        while pygame.mixer.music.get_busy():
+            time.sleep(0.3)
 
     print("Finished playing sound")
