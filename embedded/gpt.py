@@ -68,7 +68,6 @@ def generate_response(customer_queue: multiprocessing.Queue, audio_queue: multip
     while True:
         customer = customer_queue.get()
         finished_conversation = False
-        quantity = 0
         print(f"GPT task received info that customer {customer} arrived")
 
         history = []
@@ -76,6 +75,7 @@ def generate_response(customer_queue: multiprocessing.Queue, audio_queue: multip
             for state in phase_prompt:    
                 prompt = f"Verify if the current phase is {state['name']}. The phase's goal is {state['goal']}. Return true in inPhase in case the phase goal has not been accomplished. Return false in case the objective has been accomplished. To reach the goal, you must {state['guideline']}. Be objective in responses, with minimum words"
                 
+                confirmed_quantity = 0
                 in_phase, response, quantity = request(history, prompt)
                 if (in_phase):
                     print(f"State: {state['name']}")
@@ -83,6 +83,10 @@ def generate_response(customer_queue: multiprocessing.Queue, audio_queue: multip
                     print(f"Guideline: {state['guideline']}")
                     print(f"Response: {response}")
                     history.append({"role": "system", "content": response})
+                    if state["name"] == "PaymentState":
+                        confirmed_quantity = quantity
+                        print(f"Saving quantity of {confirmed_quantity} grams")
+
                     if state["name"] == "GoodbyeState":
                         finished_conversation = True
 
@@ -90,7 +94,8 @@ def generate_response(customer_queue: multiprocessing.Queue, audio_queue: multip
                 
             play_audio(response)
             if finished_conversation:
-                measure_coffee_queue.put({"container_id": 1, "weight": quantity})
+                print(f"Finished conversation, putting order of {confirmed_quantity} in to dispense queue")
+                measure_coffee_queue.put({"container_id": 1, "weight": confirmed_quantity})
                 break
             try:
                 capture_audio_event_flag.set()
