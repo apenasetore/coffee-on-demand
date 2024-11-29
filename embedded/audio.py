@@ -11,7 +11,7 @@ import webrtcvad
 CHUNK_DURATION_MS = 30
 FORMAT = pyaudio.paInt16
 CHANNELS = 1
-RATE = 16000
+RATE = 48000
 CHUNK = int(RATE * CHUNK_DURATION_MS / 1000)
 
 def amplify_audio(data, amplification_factor):
@@ -26,7 +26,7 @@ def capture_audio(audio_queue: multiprocessing.Queue, capture_audio_event_flag):
 
     vad = webrtcvad.Vad()
     vad.set_mode(3) 
-    stream = p.open(format=FORMAT, channels=CHANNELS, rate=RATE, input=True, frames_per_buffer=CHUNK)
+    stream = p.open(format=FORMAT, channels=CHANNELS, rate=RATE, input=True, frames_per_buffer=CHUNK, input_device_index=1)
 
     while True:
 
