@@ -13,7 +13,7 @@ import pygame
 from openai import OpenAI
 
 from embedded.audio import CHANNELS, RATE
-
+from embedded.coffee_api.api import get_purchases, get_coffees
 
 load_dotenv()
 API_KEY = os.getenv("API_KEY")
@@ -34,7 +34,7 @@ def generate_response(customer_queue: multiprocessing.Queue, audio_queue: multip
         {
             "name": "QuantityState",
             "goal": "Get how much of the coffee the consumer wants, considering the bounds.",
-            "guideline": "Ask about the quantity of grams the user wants. The limit is from 20 to 300 grams. Do not allow the user to get out of those bounds."
+            "guideline": "Ask about the quantity of grams the user wants. The limit is from 20 to 300 grams. Do not allow the user to get out of those bounds. Also, use coffee information to see how much coffee is in stock through the stock_grams field. Do not let the user order more than the amount in stock."
         },
         {
             "name": "PaymentState",
@@ -69,14 +69,18 @@ def generate_response(customer_queue: multiprocessing.Queue, audio_queue: multip
         customer = customer_queue.get()
         finished_conversation = False
         print(f"GPT task received info that customer {customer} arrived")
+        purchases = get_purchases(customer)
+        customer_info = purchases.get("customer")
+        purchase_history = purchases.get("purchases")
+        coffees = get_coffees(only_active=True)
 
         history = []
         while not finished_conversation:
             for state in phase_prompt:    
-                prompt = f"Verify if the current phase is {state['name']}. The phase's goal is {state['goal']}. Return true in inPhase in case the phase goal has not been accomplished. Return false in case the objective has been accomplished. To reach the goal, you must {state['guideline']}. Be objective in responses, with minimum words"
+                prompt = f"Verify if the current phase is {state['name']}. The phase's goal is {state['goal']}. Return true in inPhase in case the phase goal has not been accomplished. Return false in case the objective has been accomplished. To reach the goal, you must {state['guideline']}. If in client mode, client's name is {customer_info.get('firstname')} and their purchase history is {json.dumps(purchase_history) if purchase_history else '[]'}. If he wants to register, return True in want_to_register, else return False. Be objective in responses, with minimum words."
                 
                 confirmed_quantity = 0
-                in_phase, response, quantity = request(history, prompt)
+                in_phase, response, quantity = request(coffees, history, prompt, None)
                 if (in_phase):
                     print(f"State: {state['name']}")
                     print(f"Goal: {state['goal']}")
@@ -111,7 +115,7 @@ def generate_response(customer_queue: multiprocessing.Queue, audio_queue: multip
             history.append({"role": "user", "content": user_response})
 
             for sp in stop_prompt:
-                prompt = f"Verify if the current the reason to stop is {sp['name']}. To determine that  {sp['goal']}. Return true in stop in case the conversation must stop. To determine it, you must {sp['guideline']}., only generate a message if stop is True"
+                prompt = f"Verify if the current reason to stop is {sp['name']}. To determine that {sp['goal']}. Return true in stop in case the conversation must stop. To determine it, you must {sp['guideline']}., only generate a message if stop is True"
                 stop, response, reason = has_to_stop(history, prompt)
 
                 if stop:
@@ -124,14 +128,15 @@ def generate_response(customer_queue: multiprocessing.Queue, audio_queue: multip
                     recognize_customer_event_flag.set()
                     break
 
-def request(history: list, phase_prompt: str) -> tuple:
+def request(coffees : list, history: list, phase_prompt: str, purchase_history: list) -> tuple:
     response = client.beta.chat.completions.parse(
         model="gpt-4o",
             messages=[
-                {"role": "system", "content": f'''You are a coffee grain vending machine with 4 types of grains available.  
+                {"role": "system", "content": f'''You are a coffee grain vending machine with these coffee grains available: {json.dumps(coffees)}.  
                 Respond to this text according to the phase instructions. 
                 {phase_prompt}.
                 Continue this convesation with the user.
+                The user's purchase history is {json.dumps(purchase_history) if purchase_history else "[]"}
                 '''}
                 ] + (history if len(history) else []),
             
@@ -145,11 +150,11 @@ def request(history: list, phase_prompt: str) -> tuple:
 
     return in_phase, message, quantity
 
-def has_to_stop(history: list, phase_prompt: str) -> tuple:
+def has_to_stop(coffees: list, history: list, phase_prompt: str) -> tuple:
     response = client.beta.chat.completions.parse(
         model="gpt-4o",
             messages=[
-                {"role": "system", "content": f'''You are a coffee grain vending machine with 4 types of grains available. 
+                {"role": "system", "content": f'''You are a coffee grain vending machine with these coffee grains available: {json.dumps(coffees)}. 
                     You provide only coffee grains and can register users with their consent.  
                     Respond to this text according to the phase instructions: 
                     {phase_prompt}.  
