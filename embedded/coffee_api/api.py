@@ -1,7 +1,7 @@
 import os
 
 from dotenv import load_dotenv
-import http_requests
+import embedded.coffee_api.http_requests as http_requests
 
 load_dotenv()
 

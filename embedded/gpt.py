@@ -8,7 +8,6 @@ from dotenv import load_dotenv
 from gtts import gTTS
 import wave
 from embedded.gpt_dtos.dto import ResponseFormat, ResponseStopFormat
-from playsound import playsound
 import pygame
 from openai import OpenAI
 
@@ -77,7 +76,11 @@ def generate_response(customer_queue: multiprocessing.Queue, audio_queue: multip
         history = []
         while not finished_conversation:
             for state in phase_prompt:    
-                prompt = f"Verify if the current phase is {state['name']}. The phase's goal is {state['goal']}. Return true in inPhase in case the phase goal has not been accomplished. Return false in case the objective has been accomplished. To reach the goal, you must {state['guideline']}. If in client mode, client's name is {customer_info.get('firstname')} and their purchase history is {json.dumps(purchase_history) if purchase_history else '[]'}. If he wants to register, return True in want_to_register, else return False. Be objective in responses, with minimum words."
+                prompt = f"""Verify if the current phase is {state['name']}. The phase's goal is {state['goal']}. 
+                        Return true in inPhase in case the phase goal has not been accomplished. Return false in case the objective has been accomplished. 
+                        To reach the goal, you must {state['guideline']}. 
+                        If in client mode, client's name is {customer_info.get('firstname')} and their purchase history is {json.dumps(purchase_history) if purchase_history else '[]'}. 
+                        If he wants to register, return True in want_to_register, else return False. Be objective in responses, with minimum words."""
                 
                 confirmed_quantity = 0
                 in_phase, response, quantity = request(coffees, history, prompt, None)
