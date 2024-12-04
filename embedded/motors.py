@@ -3,15 +3,15 @@ import RPi.GPIO as GPIO
 import time
 
 
-#PINS
+# PINS
 M1_STEP_PIN = 5
 M2_STEP_PIN = 2
 M3_STEP_PIN = 12
 M4_STEP_PIN = 20
-DIR_PIN = 6 
-MS1_PIN = 26 
+DIR_PIN = 6
+MS1_PIN = 26
 MS2_PIN = 19
-MS3_PIN = 13 
+MS3_PIN = 13
 
 
 def setup():
@@ -45,7 +45,7 @@ def motor_task(turn_on_motor_event_flag, coffee_container):
         with coffee_container.get_lock():
             print(f"Loading config of {coffee_container.value=}")
             coffee_index = coffee_container.value
-            
+
             if coffee_index > 3 or coffee_index < 0:
                 coffee_index = 0
 
@@ -73,4 +73,3 @@ def motor_task(turn_on_motor_event_flag, coffee_container):
                 time.sleep(delay)
                 GPIO.output(step_pin, GPIO.LOW)
                 time.sleep(delay)
-
