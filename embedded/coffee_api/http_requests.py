@@ -1,6 +1,7 @@
 # Import the requests library
 import requests
 
+
 def get(url, headers=None, query_params=None):
     try:
         response = requests.get(url, headers=headers, params=query_params)
@@ -18,4 +19,3 @@ def post(url, data, headers=None):
 
     except requests.RequestException as e:
         print(f"POST request failed: {e}")
-

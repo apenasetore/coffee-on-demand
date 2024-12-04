@@ -55,3 +55,19 @@ def add_picture(customer_id: int, image_base64: str):
     except Exception as e:
         print(f"Error while adding picture to customer {customer_id}: {e}")
         return {}
+    
+def create_payment(value: float):
+    try:
+        response = http_requests.get(f'{COFFEE_API_URL}/payment/createPayment?value={value}')
+        return response.json() 
+    except Exception as e:
+        print(f"Error while creating payment: {e}")
+        return {}
+
+def verify_payment(payment_id: int):
+    try:
+        response = http_requests.get(f'{COFFEE_API_URL}/payment/checkPayment?paymentId={payment_id}')
+        return response.json() 
+    except Exception as e:
+        print(f"Error while verifying payment {payment_id}: {e}")
+        return {}

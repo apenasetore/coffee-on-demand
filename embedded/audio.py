@@ -11,22 +11,31 @@ import webrtcvad
 CHUNK_DURATION_MS = 30
 FORMAT = pyaudio.paInt16
 CHANNELS = 1
-RATE = 48000
+RATE = 16000
 CHUNK = int(RATE * CHUNK_DURATION_MS / 1000)
+
 
 def amplify_audio(data, amplification_factor):
     amplified_data = data * amplification_factor
-    
+
     amplified_data = np.clip(amplified_data, -32768, 32767)
-    
+
     return amplified_data
+
 
 def capture_audio(audio_queue: multiprocessing.Queue, capture_audio_event_flag):
     p = pyaudio.PyAudio()
 
     vad = webrtcvad.Vad()
-    vad.set_mode(3) 
-    stream = p.open(format=FORMAT, channels=CHANNELS, rate=RATE, input=True, frames_per_buffer=CHUNK, input_device_index=1)
+    vad.set_mode(3)
+    stream = p.open(
+        format=FORMAT,
+        channels=CHANNELS,
+        rate=RATE,
+        input=True,
+        frames_per_buffer=CHUNK,
+        input_device_index=0,
+    )
 
     while True:
 
@@ -40,7 +49,9 @@ def capture_audio(audio_queue: multiprocessing.Queue, capture_audio_event_flag):
             if recording:
                 print("Appeding speech")
                 audio_data_np = np.frombuffer(data, dtype=np.int16)
-                amplified_audio = amplify_audio(audio_data_np, amplification_factor=10.0)
+                amplified_audio = amplify_audio(
+                    audio_data_np, amplification_factor=10.0
+                )
                 amplified_bytes = amplified_audio.astype(np.int16).tobytes()
                 frames.append(amplified_bytes)
 
