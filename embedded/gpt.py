@@ -69,6 +69,12 @@ def generate_response(
             "goal": "The user is not interested in buying coffee anymore.",
             "guideline": "Say goodbye to the customer.",
         },
+        {
+            "name": "Incompatible",
+            "goal": "The user asks something not coffee or coffee beans related",
+            "guideline": "Say goodbye to the customer.",
+        }
+        
     ]
 
     while True:
@@ -123,6 +129,7 @@ def generate_response(
                 measure_coffee_queue.put(
                     {"container_id": confirmed_container, "weight": confirmed_quantity}
                 )
+
                 break
             try:
                 capture_audio_event_flag.set()
@@ -161,6 +168,7 @@ def request(
             {
                 "role": "system",
                 "content": f"""You are a coffee vending machine with these coffee grains available: {json.dumps(coffees)}.  
+                You are selling in Reais, Brazil's currency.
                 Respond to this text according to the phase instructions. 
                 {phase_prompt}.
                 Continue this convesation with the user.

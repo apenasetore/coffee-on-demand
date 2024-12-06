@@ -30,32 +30,32 @@ if __name__ == "__main__":
     #     daemon=True,
     #     args=(generate_new_encodings_event_flag,),
     # ).start()
-    multiprocessing.Process(target=motor_task, daemon=True, args=(turn_on_motor_event_flag, coffee_container)).start()
+    # multiprocessing.Process(target=motor_task, daemon=True, args=(turn_on_motor_event_flag, coffee_container)).start()
     # multiprocessing.Process(target=dispense_task, daemon=True, args=(measure_coffee_queue, coffee_container, turn_on_motor_event_flag)).start()
-    # multiprocessing.Process(
-    #     target=recognize_customer,
-    #     args=(recognize_customer_event_flag, customer_queue),
-    #     daemon=True,
-    # ).start()
-    # multiprocessing.Process(
-    #     target=capture_audio, daemon=True, args=(audio_queue, capture_audio_event_flag)
-    # ).start()
-    # multiprocessing.Process(
-    #     target=generate_response,
-    #     daemon=True,
-    #     args=(
-    #         customer_queue,
-    #         audio_queue,
-    #         measure_coffee_queue,
-    #         capture_audio_event_flag,
-    #         recognize_customer_event_flag,
-    #     ),
-    # ).start()
+    multiprocessing.Process(
+        target=recognize_customer,
+        args=(recognize_customer_event_flag, customer_queue),
+        daemon=True,
+    ).start()
+    multiprocessing.Process(
+        target=capture_audio, daemon=True, args=(audio_queue, capture_audio_event_flag)
+    ).start()
+    multiprocessing.Process(
+        target=generate_response,
+        daemon=True,
+        args=(
+            customer_queue,
+            audio_queue,
+            measure_coffee_queue,
+            capture_audio_event_flag,
+            recognize_customer_event_flag,
+        ),
+    ).start()
 
     try:
         while True:
             print("System on")
-            #recognize_customer_event_flag.set()
+            recognize_customer_event_flag.set()
             time.sleep(100000)
     except KeyboardInterrupt:
         print("Finishing...")

@@ -52,13 +52,17 @@ def load_model():
 def recognize_customer(recognize_customer_event_flag, customer_queue):
     data = load_model()
     video_capture = cv2.VideoCapture(0)
+    print(video_capture)
 
     while True:
 
         face_detection_count = defaultdict(int)
         while recognize_customer_event_flag.is_set():
-
+            
             ret, frame = video_capture.read()
+            if not ret:
+                print("Erro no frame")
+                break
             frame = cv2.resize(frame, (0, 0), fx=0.5, fy=0.5)
 
             print("Looking for someone")
