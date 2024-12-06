@@ -6,6 +6,11 @@ class Step(BaseModel):
     output: str
 
 
+class RegisterResponseFormat(BaseModel):
+    in_phase: bool
+    firstname: bool
+    lastname: bool
+
 class ResponseFormat(BaseModel):
     # steps: list[Step]
     in_phase: bool
