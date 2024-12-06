@@ -44,7 +44,8 @@ stop_prompt = [
 def generate_response(
     audio_queue: multiprocessing.Queue,
     capture_audio_event_flag,
-    register_customer_event_flag
+    register_customer_event_flag,
+    recognize_customer_event_flag
 ):
     global phase_prompt, stop_prompt
     while True:
@@ -84,6 +85,7 @@ def generate_response(
                         register_new_customer(confirmed_firstname, confirmed_lastname, pics)
                         gpt.play_audio("Thank you for registering, goodbye!")
                         register_customer_event_flag.clear()
+                        recognize_customer_event_flag.set()
                         break
 
             gpt.play_audio(response)
@@ -100,6 +102,7 @@ def generate_response(
                 print("No response given by the customer, restarting flow")
                 capture_audio_event_flag.clear()
                 register_customer_event_flag.clear()
+                recognize_customer_event_flag.set()
                 finished_conversation = True
                 break
 
@@ -117,6 +120,7 @@ def generate_response(
                     history.append({"role": "system", "content": response})
                     gpt.play_audio(response)
                     register_customer_event_flag.clear()
+                    recognize_customer_event_flag.set()
                     finished_conversation = True
                     break                    
 
@@ -182,7 +186,7 @@ def has_to_stop(history: list, phase_prompt: str) -> tuple:
 
     return stop, message, reason
 
-def capture_pictures_base64(picture_count=2, delay=2):
+def capture_pictures_base64(picture_count, delay):
     """
     Capture a specified number of pictures and return them as base64 strings.
 
@@ -230,5 +234,6 @@ def register_customer(
     audio_queue: multiprocessing.Queue,
     capture_audio_event_flag,
     register_customer_event_flag,
+    recognize_customer_event_flag
     ):
-    generate_response(audio_queue, capture_audio_event_flag, register_customer_event_flag)
+    generate_response(audio_queue, capture_audio_event_flag, register_customer_event_flag, recognize_customer_event_flag)

@@ -9,7 +9,7 @@ from embedded.register import register_customer
 
 from embedded.motors import clean_motors, motor_task
 
-# from embedded.measure_coffee import dispense_task
+from embedded.measure_coffee import dispense_task
 
 if __name__ == "__main__":
     rebuild_binaries_event_flag = multiprocessing.Event()
@@ -33,7 +33,7 @@ if __name__ == "__main__":
     # turn_on_motor_event_flag.set()
 
     # multiprocessing.Process(target=motor_task, daemon=True, args=(turn_on_motor_event_flag, coffee_container)).start()
-    #multiprocessing.Process(target=dispense_task, daemon=True, args=(measure_coffee_queue, coffee_container, turn_on_motor_event_flag)).start()
+    multiprocessing.Process(target=dispense_task, daemon=True, args=(measure_coffee_queue, coffee_container, turn_on_motor_event_flag)).start()
 
     multiprocessing.Process(
         target=recognize_customer,
@@ -65,6 +65,7 @@ if __name__ == "__main__":
             audio_queue,
             capture_audio_event_flag,
             register_customer_event_flag,
+            recognize_customer_event_flag
         ),
     ).start()
 
