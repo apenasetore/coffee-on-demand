@@ -7,12 +7,13 @@ class Step(BaseModel):
 
 
 class RegisterResponseFormat(BaseModel):
+    message: str
     in_phase: bool
-    firstname: bool
-    lastname: bool
+    firstname: str
+    lastname: str
+
 
 class ResponseFormat(BaseModel):
-    # steps: list[Step]
     in_phase: bool
     message: str
     quantity: int

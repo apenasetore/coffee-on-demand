@@ -1,7 +1,7 @@
 import json
 import multiprocessing
 from embedded.gpt_dtos.dto import RegisterResponseFormat, ResponseStopFormat
-import gpt
+import embedded.gpt as gpt
 import os
 from dotenv import load_dotenv
 from openai import OpenAI
@@ -19,16 +19,19 @@ client = OpenAI(api_key=API_KEY)
 phase_prompt = [
     {
         "name": "AskToRegisterState",
-        "goal": "Figure out if the user wants to register as a customer to this service. If he does, get his firstname and lastname and return them in firstname and lastname vars.",
+        "phase_identification": "Customer has given no information about his first and last name yet.",
+        "goal": "Figure out if the user wants to register as a customer to this service. If he does, get his firstname and lastname and return them in firstname and lastname vars, else return empty string",
         "guideline": "Say the customer's order has finished being dispensed. Then, ask if the customer wants to register as a customer to this service.",
     },
     {
         "name": "TakePictureState",
-        "goal": "Get the user to stand in front of the camera to take pictures for facial recognition.",
+        "phase_identification": "Customer has already given his first and last name.",
+        "goal": "Get the user to stand in front of the camera to take pictures for facial recognition. If you have the customer name, you are in this state.",
         "guideline": "Ask the customer to stand in front of the camera with a clear view of their face to take pictures. Start a 3 second countdown to take the picture.",
     },
     {
         "name": "Incompatible",
+        "phase_identification": "Customer has said some something that is not about his registration process",
         "goal": "Determine if the user is asking something that is not about his registration process.",
         "guideline": "Say that the machine does not provide what the user wants, the reason why and to try again later.",
     },
@@ -38,14 +41,16 @@ stop_prompt = [
         "name": "Desinterested",
         "goal": "if the user is not interested in registering to this service.",
         "guideline": "Say goodbye to the customer.",
-    },    
+    },
 ]
+
 
 def generate_response(
     audio_queue: multiprocessing.Queue,
     capture_audio_event_flag,
     register_customer_event_flag,
-    recognize_customer_event_flag
+    recognize_customer_event_flag,
+    generate_new_encodings_event_flag,
 ):
     global phase_prompt, stop_prompt
     while True:
@@ -57,43 +62,48 @@ def generate_response(
         history = []
         while not finished_conversation:
             for state in phase_prompt:
-                prompt = f"""Verify if the current phase is {state['name']}. The phase's goal is: "{state['goal']}". 
-                        Return true in inPhase in case the phase goal has not been accomplished. Return false in case the objective has been accomplished.
+                prompt = f"""Verify if the current phase is {state['name']}.
+                        To indentify if you are in this state use this informations: {state["phase_identification"]}.
+                        The phase's goal is: "{state['goal']}". 
+                        Return true in in_phase in case the phase goal has not been accomplished. Return false in case the objective has been accomplished.
                         To reach the goal, you must {state['guideline']}.
                         Call the customer coffee enthusiast.
                         ."""
 
-                in_phase, response, firstname, lastname = request(
-                    history, prompt
-                )
+                in_phase, response, firstname, lastname = request(history, prompt)
                 if in_phase:
                     print(f"State: {state['name']}")
                     print(f"Goal: {state['goal']}")
                     print(f"Guideline: {state['guideline']}")
                     print(f"Message: {response}")
                     history.append({"role": "system", "content": response})
-                    if lastname != '':
+                    if lastname != "":
                         confirmed_lastname = lastname
                         print(f"Saving lastname {confirmed_lastname}")
-                    if firstname != '':
+                    if firstname != "":
                         confirmed_firstname = firstname
                         print(f"Saving firstname {confirmed_firstname}")
 
                     if state["name"] == "TakePictureState":
+                        gpt.play_audio(response)
                         finished_conversation = True
                         pics = capture_pictures_base64(3, 2)
-                        register_new_customer(confirmed_firstname, confirmed_lastname, pics)
-                        gpt.play_audio("Thank you for registering, goodbye!")
+                        gpt.play_audio(
+                            "I've already taken your pictures, now I will send them to registration! Thank you for your purchase."
+                        )
+                        register_new_customer(
+                            confirmed_firstname, confirmed_lastname, pics
+                        )
                         register_customer_event_flag.clear()
-                        recognize_customer_event_flag.set()
-                        break
+                        generate_new_encodings_event_flag.set()
+                        print(f"Finished register phase conversation.")
+
+                    break
+
+            if finished_conversation:
+                break
 
             gpt.play_audio(response)
-            if finished_conversation:
-                print(
-                    f"Finished register phase conversation."
-                )
-                break
             try:
                 capture_audio_event_flag.set()
                 audio_buffer = audio_queue.get(timeout=20)
@@ -117,12 +127,13 @@ def generate_response(
                     print(f"State: {sp['name']}")
                     print(f"Goal: {sp['goal']}")
                     print(f"Guideline: {sp['guideline']}")
+                    print(f"Message: {response}")
                     history.append({"role": "system", "content": response})
                     gpt.play_audio(response)
                     register_customer_event_flag.clear()
                     recognize_customer_event_flag.set()
                     finished_conversation = True
-                    break                    
+                    break
 
 
 def register_new_customer(firstname: str, lastname: str, pics: list):
@@ -131,9 +142,8 @@ def register_new_customer(firstname: str, lastname: str, pics: list):
     for pic in pics:
         coffee_api.add_picture(new_customer["customer"][0]["id"], pic)
 
-def request(
-    history: list, phase_prompt: str
-) -> tuple:
+
+def request(history: list, phase_prompt: str) -> tuple:
     response = client.beta.chat.completions.parse(
         model="gpt-4o",
         messages=[
@@ -186,54 +196,53 @@ def has_to_stop(history: list, phase_prompt: str) -> tuple:
 
     return stop, message, reason
 
+
 def capture_pictures_base64(picture_count, delay):
-    """
-    Capture a specified number of pictures and return them as base64 strings.
-
-    Args:
-        picture_count (int): Number of pictures to capture.
-        delay (int): Delay in seconds between each picture.
-
-    Returns:
-        List[str]: List of base64-encoded strings for each captured picture.
-    """
-    # Open the video capture
     video_capture = cv2.VideoCapture(0)
     if not video_capture.isOpened():
         raise RuntimeError("Failed to open video capture device.")
 
+    time.sleep(0.3)
     base64_images = []
 
     try:
-        for _ in range(picture_count):
+        for i in range(picture_count):
             # Capture a frame
             ret, frame = video_capture.read()
             if not ret:
                 print("Failed to capture frame.")
                 break
 
-            # Encode the frame to JPEG format
-            _, buffer = cv2.imencode('.jpg', frame)
+            _, buffer = cv2.imencode(".jpg", frame)
 
-            # Convert the buffer to a base64 string
-            base64_image = base64.b64encode(buffer).decode('utf-8')
+            base64_image = base64.b64encode(buffer).decode("utf-8")
             base64_images.append(base64_image)
 
             print("Captured a base64-encoded image.")
-            
-            # Wait for the specified delay
+
             time.sleep(delay)
+    except Exception as e:
+        gpt.play_audio(
+            "Oh, some error occurred during the pictures. So we cant't procceed. Anyway, thank you for your purchase!"
+        )
     finally:
-        # Release the video capture
         video_capture.release()
         print("Released video capture device.")
 
     return base64_images
 
+
 def register_customer(
     audio_queue: multiprocessing.Queue,
     capture_audio_event_flag,
     register_customer_event_flag,
-    recognize_customer_event_flag
-    ):
-    generate_response(audio_queue, capture_audio_event_flag, register_customer_event_flag, recognize_customer_event_flag)
+    recognize_customer_event_flag,
+    generate_new_encodings_event_flag,
+):
+    generate_response(
+        audio_queue,
+        capture_audio_event_flag,
+        register_customer_event_flag,
+        recognize_customer_event_flag,
+        generate_new_encodings_event_flag,
+    )
