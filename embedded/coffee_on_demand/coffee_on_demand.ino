@@ -84,21 +84,18 @@ const unsigned char coffee_bean [] PROGMEM = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00
 enum states {
   none,
   idle,
-  listening,
-  talking,
+  interacting,
   dispensing,
-  payment,
-  registration,
   finished
 };
 
 states priorstate, state;
 
-String received_state;
-received_state.reserve(100)
+String received_message;
 float weight, price, total;
 
 void setup() {
+  received_message.reserve(2000);
   Serial.begin(9600);
   while (!Serial) {
     ; // wait for serial port to connect. Needed for native USB
@@ -115,22 +112,13 @@ void setup() {
 void loop(void){
   switch (state) {
     case idle:
-      idle_state();
+      finished_state();
       break;
-    case listening:
+    case interacting:
       listening_state();
-      break;
-    case talking:
-      talking_state();
       break;
     case dispensing:
       dispensing_state();
-      break;
-    case payment:
-      payment_state();
-      break;
-    case registration:
-      registration_state();
       break;  
     case finished:
       finished_state();
@@ -162,7 +150,7 @@ void idle_state() {
 
   int button = getTouchButton();
   if(button == 1 || button == 2){
-    state = listening;
+    state = interacting;
   }
 
   if (state != priorstate) {
@@ -181,61 +169,10 @@ void listening_state(){
 
   int button = getTouchButton();
   if(button == 1){
-    state = talking;
+    state = interacting;
   }
   if(button == 2){
     state = dispensing;
-  }
-  if(button == 3){
-    state = idle;
-  }
-
-  if (state != priorstate) {
-    tft.fillScreen(WHITE);
-  }
-}
-
-void talking_state(){
-
-  if(state != priorstate){
-    priorstate = state;
-    
-    drawSpeakingBotoes();
-    drawSpeakingText();
-  }
-
-  int button = getTouchButton();
-  if(button == 1){
-    state = listening;
-  }
-  if(button == 2){
-    state = dispensing;
-  }
-  if(button == 3){
-    state = idle;
-  }
-
-  if (state != priorstate) {
-    tft.fillScreen(WHITE);
-  }
-}
-
-void registration_state(){
-
-  if(state != priorstate){
-    priorstate = state;
-    
-    drawRegisterBotoes();
-    drawRegisterText();
-  }
-
-
-  int button = getTouchButton();
-  if(button == 1){
-    state = dispensing;
-  }
-  if(button == 2){
-    state = finished;
   }
   if(button == 3){
     state = idle;
@@ -257,7 +194,7 @@ void dispensing_state(){
 
   int button = getTouchButton();
   if(button == 1 || button == 2){
-    state = payment;
+    state = finished;
   }
 
     tft.fillRoundRect(5, 345, 230, 50, 4, GREEN);
@@ -273,43 +210,17 @@ void dispensing_state(){
   }
 }
 
-void payment_state(){
-
-  if(state != priorstate){
-    priorstate = state;
-    
-    drawBotoes();
-    drawText();
-  }
-
-
-  int button = getTouchButton();
-  if(button == 1){
-    state = registering;
-  }
-  if(button == 2){
-    state = finished;
-  }
-  if(button == 3){
-    state = idle;
-  }
-
-  if (state != priorstate) {
-    tft.fillScreen(WHITE);
-  }
-}
-
 void finished_state(){
 
   if(state != priorstate){
     priorstate = state;
     sendNumberToPi(20);
-    received_message = "00020126330014BR.GOV.BCB.PIX01110953808491852040000530398654041.005802BR5913MARIA STEDILE6008CURITIBA62180514COFFEEONDEMAND6304572C";
+    delay(1000);
+    received_message = Serial.readStringUntil('\n');
     Serial.println(received_message.c_str());
     drawFinalizado();
     displayQRcode(received_message.c_str());
     received_message = "";
-
   }
 
   int button = getTouchButton();
@@ -381,16 +292,7 @@ void drawWeightingBotoes(){
   tft.setTextColor(WHITE);
   tft.setTextSize(1);
   tft.setCursor(34, 375);
-  tft.print("Register");
-}
-
-void drawRegisterBotoes(){
-  tft.fillRoundRect(5, 345, 230, 50, 4, RED);
-
-  tft.setTextColor(WHITE);
-  tft.setTextSize(1);
-  tft.setCursor(56, 375);
-  tft.print("Finish");
+  tft.print("Interact");
 }
 
 void drawListeningBotoes(){
@@ -402,20 +304,11 @@ void drawListeningBotoes(){
   tft.print("Send");
 }
 
-void drawSpeakingBotoes(){
-  drawBotoes();
-  tft.setFont(&FreeSans9pt7b);
-  tft.setTextColor(WHITE);
-  tft.setTextSize(1);
-  tft.setCursor(34, 375);
-  tft.print("Speak");
-}
-
 void drawText(){
   tft.setTextColor(BLACK);
   tft.setTextSize(3);
   tft.setCursor(18, 120);
-  tft.print(fruit);
+  // tft.print(type);
   
   tft.setTextSize(1);
   tft.setCursor(20, 155);
@@ -437,7 +330,7 @@ void drawText(){
   //240x400
   tft.drawRect(18,138,204,46,BLACK);
 
-  fruit = "";
+  // fruit = "";
   weight = 0;
   price = 0;
   total = 0;
@@ -448,29 +341,6 @@ void drawListeningText(){
   tft.setCursor(33, 150);
   tft.setTextSize(2);
   tft.println("Listening...");
-  tft.println(""); 
-}
-
-void drawSpeakingText(){
-  tft.setTextColor(COFFEE_ON_DEMAND_1);
-  tft.setCursor(33, 150);
-  tft.setTextSize(2);
-  tft.println("Answering...");
-  tft.println(""); 
-}
-
-void drawRegisterText(){
-  tft.setTextColor(COFFEE_ON_DEMAND_1);
-  tft.setCursor(33, 150);
-  tft.setTextSize(2);
-  tft.println("Registering");
-  tft.setCursor(33, 185);
-  tft.setTextSize(1);
-  tft.print("Please stand in front");
-  tft.setCursor(33, 205);
-  tft.print(" of the camera to take");
-  tft.setCursor(33, 225);
-  tft.print("a picture.");
   tft.println(""); 
 }
 
@@ -547,23 +417,6 @@ void displayQRcode(const char* text){
       }
     }
   }
-}
-
-// Function to parse the input string
-
-void parseInput(String input) {
-  int firstUnderscoreIndex = input.indexOf('_');
-  int secondUnderscoreIndex = input.indexOf('_', firstUnderscoreIndex + 1);
-  int thirdUnderscoreIndex = input.indexOf('_', secondUnderscoreIndex + 1);
-  
-  fruit = input.substring(0, firstUnderscoreIndex);
-  weightStr = input.substring(firstUnderscoreIndex + 1, secondUnderscoreIndex);
-  totalStr = input.substring(secondUnderscoreIndex + 1, thirdUnderscoreIndex);
-  priceStr = input.substring(thirdUnderscoreIndex + 1);
-  
-  weight = weightStr.toFloat();
-  total = totalStr.toFloat();
-  price = priceStr.toFloat();
 }
 
 void sendNumberToPi(int n){
