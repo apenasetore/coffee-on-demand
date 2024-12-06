@@ -12,7 +12,8 @@ import pygame
 from openai import OpenAI
 
 from embedded.audio import CHANNELS, RATE
-from embedded.coffee_api.api import get_purchases, get_coffees
+from embedded.coffee_api.api import get_purchases, get_coffees, create_payment, verify_payment
+from embedded.arduino import send_to_arduino
 
 load_dotenv()
 API_KEY = os.getenv("API_KEY")
@@ -57,11 +58,6 @@ def generate_response(
             "goal": "Finish order and say goodbye.",
             "guideline": "Say goodbye to the customer.",
         },
-        {
-            "name": "Incompatible",
-            "goal": "Determine if the user is asking something that is not coffee or available.",
-            "guideline": "Say that the machine does not provide what the user wants, the reason why and to try again later",
-        },
     ]
     stop_prompt = [
         {
@@ -97,10 +93,10 @@ def generate_response(
                         Client's name is {name}. This client is {"not" if name == "coffee enthusiast" else ""} registered and his purchase history is {json.dumps(purchase_history) if purchase_history else '[]'}.
                         When asked, you can use the purchase history to suggest coffees to the client based on previous purchases and customer's tastes.
                         The price of each coffee is price per 1 gram, so you need to do the math to tell the total price.
-                        If client is not register and wants to register in the RegisterState, return True in want_to_register, else return False. The RegisterState can be skipped if client is registered and proceed to GoodbyeState
+                        If client is not registered and wants to register in the RegisterState, return True in want_to_register, else return False. The RegisterState can be skipped if client is registered and proceed to GoodbyeState
                         Be objective in responses, with minimum words."""
 
-                in_phase, response, quantity, container = request(
+                in_phase, response, quantity, container, total = request(
                     coffees, history, prompt, None
                 )
                 if in_phase:
@@ -126,6 +122,16 @@ def generate_response(
                 print(
                     f"Finished conversation, putting order of {confirmed_quantity} in to dispense queue"
                 )
+
+                pix = create_payment(total)
+                print(pix)
+                send_to_arduino(pix["payload"]["payload"])
+                play_audio("Please scan the QR Code in the LCD screen to pay.")
+                print(pix["payment_id"])
+                payment = verify_payment(pix["payment_id"])
+                while not payment["received"]:
+                    payment = verify_payment(pix["payment_id"])
+
                 measure_coffee_queue.put(
                     {"container_id": confirmed_container, "weight": confirmed_quantity}
                 )
@@ -168,8 +174,8 @@ def request(
             {
                 "role": "system",
                 "content": f"""You are a coffee vending machine with these coffee grains available: {json.dumps(coffees)}.  
-                You are selling in Reais, Brazil's currency.
-                Respond to this text according to the phase instructions. 
+                You are selling in Reais, Brazil's currency. Do not speak portuguese.
+                Respond to this text according to the phase instructions. Answer in a text-to-speech friendly way, never use topics.
                 {phase_prompt}.
                 Continue this convesation with the user.
                 The user's purchase history is {json.dumps(purchase_history) if purchase_history else "[]"}
@@ -185,8 +191,9 @@ def request(
     message = response["message"]
     quantity = response["quantity"]
     container = response["container"]
+    total = response["total"]
 
-    return in_phase, message, quantity, container
+    return in_phase, message, quantity, container, total
 
 
 def has_to_stop(coffees: list, history: list, phase_prompt: str) -> tuple:

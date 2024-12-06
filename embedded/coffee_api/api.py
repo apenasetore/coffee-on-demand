@@ -65,6 +65,7 @@ def create_payment(value: float):
         return {}
 
 def verify_payment(payment_id: int):
+    print(f'{COFFEE_API_URL}/payment/checkPayment?paymentId={payment_id}')
     try:
         response = http_requests.get(f'{COFFEE_API_URL}/payment/checkPayment?paymentId={payment_id}')
         return response.json() 

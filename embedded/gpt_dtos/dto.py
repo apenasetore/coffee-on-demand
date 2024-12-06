@@ -12,6 +12,7 @@ class ResponseFormat(BaseModel):
     message: str
     quantity: int
     container: int
+    total: float
     want_to_register: bool
 
 

@@ -13,7 +13,7 @@ FORMAT = pyaudio.paInt16
 CHANNELS = 1
 RATE = 48000
 CHUNK = int(RATE * CHUNK_DURATION_MS / 1000)
-INDEX = 2
+INDEX = 1
 
 
 def amplify_audio(data, amplification_factor):
