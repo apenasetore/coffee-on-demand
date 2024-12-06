@@ -19,7 +19,14 @@ def process_base64_image(base64_string):
     return image
 
 
-def generate_new_encodings(generate_new_encodings_event_flag):
+def generate_new_encodings(
+    generate_new_encodings_event_flag,
+    recognize_customer_event_flag,
+    load_encodings_event_flag,
+):
+    while not generate_new_encodings_event_flag.is_set():
+        pass
+
     customers = get_customers()
 
     known_face_encodings = []
@@ -44,24 +51,36 @@ def generate_new_encodings(generate_new_encodings_event_flag):
     with open("embedded/encodings.pkl", "wb") as f:
         pickle.dump(data, f)
 
+    load_encodings_event_flag.set()
+    recognize_customer_event_flag.set()
+    generate_new_encodings_event_flag.clear()
+
 
 def load_model():
-    return pickle.loads(open("embedded/encodings.pkl", "rb").read())
+    try:
+        return pickle.loads(open("embedded/encodings.pkl", "rb").read())
+    except Exception as e:
+        return {"encodings": [], "names": []}
 
 
-def recognize_customer(recognize_customer_event_flag, customer_queue):
+def recognize_customer(
+    recognize_customer_event_flag, load_encodings_event_flag, customer_queue
+):
     data = load_model()
     video_capture = cv2.VideoCapture(0)
-    print(video_capture)
 
     while True:
 
         face_detection_count = defaultdict(int)
         while recognize_customer_event_flag.is_set():
-            
+
+            if load_encodings_event_flag.is_set():
+                data = load_model()
+                load_encodings_event_flag.clear()
+
             ret, frame = video_capture.read()
             if not ret:
-                print("Erro no frame")
+                print("Frame error")
                 break
             frame = cv2.resize(frame, (0, 0), fx=0.5, fy=0.5)
 
@@ -85,7 +104,7 @@ def recognize_customer(recognize_customer_event_flag, customer_queue):
                     face_detection_count[customer_id] += 1
                     print(f"Recognized {customer_id}")
 
-            if face_locations:
+            if face_locations and customer_id == -1:
                 face_detection_count[customer_id] += 1
                 print(f"Recognized {customer_id}")
 

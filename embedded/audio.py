@@ -35,7 +35,7 @@ def capture_audio(audio_queue: multiprocessing.Queue, capture_audio_event_flag):
         rate=RATE,
         input=True,
         frames_per_buffer=CHUNK,
-        input_device_index=INDEX,
+        input_device_index=0,
     )
 
     while True:

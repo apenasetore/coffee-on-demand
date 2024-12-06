@@ -9,6 +9,7 @@ from gtts import gTTS
 import wave
 from embedded.gpt_dtos.dto import ResponseFormat, ResponseStopFormat
 import pygame
+from pydub import AudioSegment
 from openai import OpenAI
 
 from embedded.audio import CHANNELS, RATE
@@ -69,8 +70,7 @@ def generate_response(
             "name": "Incompatible",
             "goal": "The user asks something not coffee or coffee beans related",
             "guideline": "Say goodbye to the customer.",
-        }
-        
+        },
     ]
 
     while True:
@@ -248,6 +248,7 @@ def play_audio(text: str):
     pygame.mixer.init()
     with tempfile.NamedTemporaryFile(delete=True, suffix=".mp3") as temp_audio:
         audio.save(temp_audio.name)
+
         pygame.mixer.music.load(temp_audio.name)
         pygame.mixer.music.play()
         while pygame.mixer.music.get_busy():
