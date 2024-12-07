@@ -2,6 +2,7 @@ import multiprocessing
 import RPi.GPIO as GPIO
 import time
 
+from embedded.gpt import play_audio
 
 # PINS
 M1_STEP_PIN = 5
@@ -31,7 +32,7 @@ def clean_motors():
     print("Cleaned motors")
 
 
-def motor_task(turn_on_motor_event_flag, coffee_container):
+def motor_task(turn_on_motor_event_flag, turn_on_cup_sensor, removed_coffee_container, coffee_container):
     setup()
 
     coffee_configs = [M1_STEP_PIN, M2_STEP_PIN, M3_STEP_PIN, M4_STEP_PIN]
@@ -53,10 +54,16 @@ def motor_task(turn_on_motor_event_flag, coffee_container):
 
                 step_pin = coffee_configs[coffee_index]
 
+            turn_on_cup_sensor.set()
+
             if turn_on_motor_event_flag.is_set():
                 print(f"Forward {step_pin}")
                 for i in range(400):
                     if not turn_on_motor_event_flag.is_set():
+                        break
+                    if removed_coffee_container.is_set():
+                        print("Removed coffee container")
+                        play_audio("Please put the container in place.")
                         break
                     GPIO.output(DIR_PIN, GPIO.LOW)
                     GPIO.output(step_pin, GPIO.HIGH)
@@ -70,6 +77,11 @@ def motor_task(turn_on_motor_event_flag, coffee_container):
                 print("Backwards")
                 for i in range(300):
                     if not turn_on_motor_event_flag.is_set():
+                        break
+                    
+                    if removed_coffee_container.is_set():
+                        print("Removed coffee container")
+                        play_audio("Please put the container in place.")
                         break
 
                     GPIO.output(DIR_PIN, GPIO.HIGH)

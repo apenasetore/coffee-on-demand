@@ -80,3 +80,11 @@ def add_purchase(customer_id: int, weight: int, coffee_id: int):
     except Exception as e:
         print(f"Error while adding purchase for customer {customer_id}: {e}")
         return {}
+
+def update_coffee_quantity(coffee_id: int, weight: int):
+    try:
+        response = http_requests.patch(f'{COFFEE_API_URL}/coffee', {"weight": weight, "coffee_id": coffee_id}, {"x-api-key": COFFEE_API_KEY})
+        return response.json() 
+    except Exception as e:
+        print(f"Error while updating quantity of {coffee_id}: {e}")
+        return {}
