@@ -56,8 +56,14 @@ def generate_response(
         {
             "name": "GoodbyeState",
             "goal": "Conclude the interaction politely.",
-            "guideline": "Thank the user and say goodbye.",
-            "phase_identification": "The user has confirmed their order."
+            "guideline": "Thank the user and say goodbye. Ask no more questions.",
+            "phase_identification": "The user has confirmed their order.",
+        },
+        {
+            "name": "Incompatible",
+            "goal": "Redirect the conversation to coffee or coffee bean topics.",
+            "guideline": "If the user asks about something unrelated to coffee, politely redirect the conversation by mentioning the types of coffee or services available. Example: 'I specialize in helping with coffee selections and orders. Could I interest you in exploring our coffee options?'.",
+            "phase_identification": "The user has asked about topics unrelated to this machine or that the machine does not provide. You are not in this phase if user is in topic but lost interest in his purchase."
         }
     ]
 
@@ -67,11 +73,6 @@ def generate_response(
             "goal": "Handle situations where the user is no longer interested.",
             "guideline": "Politely thank the user for their time and end the conversation."
         },
-        {
-            "name": "Incompatible",
-            "goal": "Redirect the conversation to coffee or coffee bean topics.",
-            "guideline": "If the user asks about something unrelated to coffee, politely redirect the conversation by mentioning the types of coffee or services available. Example: 'I specialize in helping with coffee selections and orders. Could I interest you in exploring our coffee options?' If the user remains uninterested, thank them for their time and end the conversation."
-        }
     ]
 
     while True:
@@ -126,15 +127,15 @@ def generate_response(
                     f"Finished conversation, putting order of {confirmed_quantity} in to dispense queue"
                 )
 
-                # pix = create_payment(total)
-                # print(pix)
-                # send_to_arduino(pix["payload"]["payload"])
-                # play_audio("Please scan the QR Code in the LCD screen to pay.")
-                # print(pix["payment_id"])
-                # payment = verify_payment(pix["payment_id"])
-                # while not payment["received"]:
-                #     payment = verify_payment(pix["payment_id"])
-                #     time.sleep(3)
+                pix = create_payment(total)
+                print(pix)
+                send_to_arduino(pix["payload"]["payload"])
+                play_audio("Please scan the QR Code in the LCD screen to pay.")
+                print(pix["payment_id"])
+                payment = verify_payment(pix["payment_id"])
+                while not payment["paid"]:
+                    payment = verify_payment(pix["payment_id"])
+                    time.sleep(3)
 
                 chosen_coffee = None
                 for coffee in coffees:
@@ -161,8 +162,6 @@ def generate_response(
             history.append({"role": "user", "content": user_response})
 
             for sp in stop_prompt:
-                if in_phase:
-                    break
                 prompt = f"Verify if the current reason to stop is {sp['name']}. To determine that {sp['goal']}. Return true in stop in case the conversation must stop. To determine it, you must {sp['guideline']}., only generate a message if stop is True"
                 stop, response, reason = has_to_stop(coffees, history, prompt)
 
