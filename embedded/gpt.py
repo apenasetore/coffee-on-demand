@@ -123,15 +123,15 @@ def generate_response(
                     f"Finished conversation, putting order of {confirmed_quantity} in to dispense queue"
                 )
 
-                pix = create_payment(total)
-                print(pix)
-                send_to_arduino(pix["payload"]["payload"])
-                play_audio("Please scan the QR Code in the LCD screen to pay.")
-                print(pix["payment_id"])
-                payment = verify_payment(pix["payment_id"])
-                while not payment["received"]:
-                    payment = verify_payment(pix["payment_id"])
-                    time.sleep(3)
+                # pix = create_payment(total)
+                # print(pix)
+                # send_to_arduino(pix["payload"]["payload"])
+                # play_audio("Please scan the QR Code in the LCD screen to pay.")
+                # print(pix["payment_id"])
+                # payment = verify_payment(pix["payment_id"])
+                # while not payment["received"]:
+                #     payment = verify_payment(pix["payment_id"])
+                #     time.sleep(3)
 
                 chosen_coffee = None
                 for coffee in coffees:
