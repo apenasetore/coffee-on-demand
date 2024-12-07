@@ -1,6 +1,7 @@
 import queue
 import threading
 import time
+from embedded.coffee_api.api import add_purchase
 from embedded.hx711 import HX711
 import multiprocessing
 
@@ -23,10 +24,12 @@ def dispense_task(measure_coffee_queue: multiprocessing.Queue, recognize_custome
         print(f"Received request {measure_coffee_request}")
 
         container_id = measure_coffee_request["container_id"]
+        customer_id = measure_coffee_request["customer_id"]
+        coffee_id = measure_coffee_request["coffee_id"]
         with coffee_container.get_lock():
             print(f"Updated container to dispense to {container_id}")
             coffee_container.value = container_id
-
+        
         requested_coffee_weight = measure_coffee_request["weight"]
         turn_on_motor_event_flag.set()
 
@@ -37,6 +40,11 @@ def dispense_task(measure_coffee_queue: multiprocessing.Queue, recognize_custome
             hx.power_down()
             hx.power_up()
             time.sleep(0.2)
+        
+        time.sleep(2)
+        print("Finished dispense")
+        weight = int(hx.get_weight(5))
+        add_purchase(customer_id, weight, coffee_id)
 
         turn_on_motor_event_flag.clear()
         recognize_customer_event_flag.set()

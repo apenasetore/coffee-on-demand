@@ -72,3 +72,11 @@ def verify_payment(payment_id: int):
     except Exception as e:
         print(f"Error while verifying payment {payment_id}: {e}")
         return {}
+    
+def add_purchase(customer_id: int, weight: int, coffee_id: int):
+    try:
+        response = http_requests.post(f'{COFFEE_API_URL}/purchase', {"customer_id": customer_id, "weight": weight, "coffee_id": coffee_id}, {"x-api-key": COFFEE_API_KEY})
+        return response.json() 
+    except Exception as e:
+        print(f"Error while adding purchase for customer {customer_id}: {e}")
+        return {}

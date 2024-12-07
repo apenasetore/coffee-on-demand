@@ -131,9 +131,16 @@ def generate_response(
                 payment = verify_payment(pix["payment_id"])
                 while not payment["received"]:
                     payment = verify_payment(pix["payment_id"])
+                    time.sleep(3)
+
+                chosen_coffee = None
+                for coffee in coffees:
+                    if coffee["container"] == str(confirmed_container):
+                        chosen_coffee = coffee
+                        break
 
                 measure_coffee_queue.put(
-                    {"container_id": confirmed_container, "weight": confirmed_quantity}
+                    {"container_id": confirmed_container - 1, "weight": confirmed_quantity, "customer_id": customer, "coffee_id": chosen_coffee}
                 )
 
                 break
