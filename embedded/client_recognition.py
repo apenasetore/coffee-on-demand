@@ -10,6 +10,7 @@ import numpy as np
 
 from embedded.coffee_api.api import get_customers
 from embedded.coffee_api.http_requests import get
+from embedded.arduino import send_to_arduino
 
 
 def process_base64_image(base64_string):
@@ -72,6 +73,7 @@ def recognize_customer(
     while True:
 
         face_detection_count = defaultdict(int)
+        send_to_arduino("UPDATE:STATE:IDLE")
         while recognize_customer_event_flag.is_set():
 
             if load_encodings_event_flag.is_set():

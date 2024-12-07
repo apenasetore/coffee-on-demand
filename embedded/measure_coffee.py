@@ -4,6 +4,7 @@ import time
 from embedded.coffee_api.api import add_purchase
 from embedded.hx711 import HX711
 import multiprocessing
+from embedded.arduino import send_to_arduino
 
 DT_PIN = 27
 SCK_PIN = 17
@@ -30,12 +31,14 @@ def dispense_task(measure_coffee_queue: multiprocessing.Queue, recognize_custome
             print(f"Updated container to dispense to {container_id}")
             coffee_container.value = container_id
         
+        send_to_arduino("UPDATE:STATE:DISPENSING")
         requested_coffee_weight = measure_coffee_request["weight"]
         turn_on_motor_event_flag.set()
 
         weight = 0
         while weight <= requested_coffee_weight: 
             weight = int(hx.get_weight(5))
+            send_to_arduino(f"UPDATE:WEIGHT:{weight}")
             print(f"Weight = {weight}")
             hx.power_down()
             hx.power_up()
@@ -44,6 +47,7 @@ def dispense_task(measure_coffee_queue: multiprocessing.Queue, recognize_custome
         time.sleep(2)
         weight = int(hx.get_weight(5))
         print(f"Finished dispense of coffee {coffee_id} with weight : {weight}")
+        send_to_arduino(f"UPDATE:WEIGHT:{weight}")
 
         turn_on_motor_event_flag.clear()
         if customer_id == -1:

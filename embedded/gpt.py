@@ -133,10 +133,8 @@ def generate_response(
                 )
 
                 pix = create_payment(total)
-                print(pix)
-                # send_to_arduino(pix["payload"]["payload"])
+                send_to_arduino(f"UPDATE:PIX:{pix["payload"]["payload"]}")
                 play_audio("Please scan the QR Code in the LCD screen to pay.")
-                print(pix["paymentId"])
                 payment = verify_payment(pix["paymentId"])
                 while not payment["paid"]:
                     print(payment["paid"])
@@ -148,7 +146,7 @@ def generate_response(
                     if coffee["container"] == str(confirmed_container):
                         chosen_coffee = coffee
                         break
-
+        
                 measure_coffee_queue.put(
                     {"container_id": confirmed_container - 1, "weight": confirmed_quantity, "customer_id": customer, "coffee_id": chosen_coffee}
                 )
@@ -156,8 +154,10 @@ def generate_response(
                 break
             try:
                 capture_audio_event_flag.set()
+                send_to_arduino("UPDATE:STATE:LISTENING")
                 audio_buffer = audio_queue.get(timeout=20)
                 print("Got audio from queue")
+                send_to_arduino("UPDATE:STATE:PROCESSING")
             except Exception as e:
                 print("No response given by the customer, restarting flow")
                 capture_audio_event_flag.clear()
@@ -275,6 +275,7 @@ def play_audio(text: str):
 
         pygame.mixer.music.load(temp_audio.name)
         pygame.mixer.music.play()
+        send_to_arduino("UPDATE:STATE:TALKING")
         while pygame.mixer.music.get_busy():
             time.sleep(0.3)
 

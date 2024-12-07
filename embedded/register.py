@@ -11,6 +11,7 @@ import cv2
 import time
 import numpy as np
 import embedded.coffee_api.api as coffee_api
+from embedded.arduino import send_to_arduino
 
 load_dotenv()
 API_KEY = os.getenv("API_KEY")
@@ -88,6 +89,7 @@ def generate_response(
                     if state["name"] == "TakePictureState":
                         gpt.play_audio(response)
                         finished_conversation = True
+                        send_to_arduino("UPDATE:STATE:REGISTERING")
                         pics = capture_pictures_base64(3, 2)
                         gpt.play_audio(
                             "I've already taken your pictures, now I will send them to registration! Thank you for your purchase."
@@ -107,8 +109,10 @@ def generate_response(
             gpt.play_audio(response)
             try:
                 capture_audio_event_flag.set()
+                send_to_arduino("UPDATE:STATE:LISTENING")
                 audio_buffer = audio_queue.get(timeout=20)
                 print("Got audio from queue")
+                send_to_arduino("UPDATE:STATE:PROCESSING")
             except Exception as e:
                 print("No response given by the customer, restarting flow")
                 capture_audio_event_flag.clear()
@@ -122,7 +126,7 @@ def generate_response(
 
             for sp in stop_prompt:
                 prompt = f"Verify if the current reason to stop is {sp['name']}. To determine if it is, figure out {sp['goal']}. Return true in stop in case the conversation must stop. To determine it, you must {sp['guideline']}., only generate a message if stop is True"
-                stop, response, reason = has_to_stop(history, prompt)
+                stop, response = has_to_stop(history, prompt)
 
                 if stop:
                     print(f"State: {sp['name']}")
@@ -193,9 +197,8 @@ def has_to_stop(history: list, phase_prompt: str) -> tuple:
     response = json.loads(response.choices[0].message.content)
     stop = response["stop"]
     message = response["message"]
-    reason = response["reason"]
 
-    return stop, message, reason
+    return stop, message
 
 
 def capture_pictures_base64(picture_count, delay):
