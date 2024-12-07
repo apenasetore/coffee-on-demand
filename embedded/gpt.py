@@ -4,6 +4,8 @@ import multiprocessing
 import os
 import time
 import tempfile
+import concurrent.futures
+
 from dotenv import load_dotenv
 from gtts import gTTS
 import wave
@@ -11,6 +13,7 @@ from embedded.gpt_dtos.dto import ResponseFormat, ResponseStopFormat
 import pygame
 from pydub import AudioSegment
 from openai import OpenAI
+
 
 from embedded.audio import CHANNELS, RATE
 from embedded.coffee_api.api import get_purchases, get_coffees, create_payment, verify_payment
@@ -60,20 +63,22 @@ def generate_response(
             "phase_identification": "The user has confirmed their order.",
         },
         {
-            "name": "Incompatible",
-            "goal": "Redirect the conversation to coffee or coffee bean topics.",
-            "guideline": "If the user asks about something unrelated to coffee, politely redirect the conversation by mentioning the types of coffee or services available. Example: 'I specialize in helping with coffee selections and orders. Could I interest you in exploring our coffee options?'.",
-            "phase_identification": "The user has asked about topics unrelated to this machine or that the machine does not provide. You are not in this phase if user is in topic but lost interest in his purchase."
-        }
+        "name": "Incompatible",
+        "goal": "Redirect the conversation to coffee or coffee bean topics when the user introduces unrelated subjects.",
+        "guideline": "If the user asks about something unrelated to coffee, politely redirect the conversation by highlighting coffee options or services. Example: 'I specialize in helping with coffee selections and orders. Could I interest you in exploring our coffee options?'",
+        "phase_identification": "You are in this phase when the user asks about topics unrelated to the machine's capabilities or offerings. This phase does not apply if the user is discussing coffee-related topics but shows disinterest in continuing."
+    }
+
     ]
 
     stop_prompt = [
-        {
-            "name": "Disinterested",
-            "goal": "Handle situations where the user is no longer interested.",
-            "guideline": "Politely thank the user for their time and end the conversation."
-        },
+           {
+        "name": "Disinterested",
+        "goal": "the user explicitly said he is no longer interested in the buying process.",
+        "guideline": "The user must say explicitly that he is not interest in anything coffee related."
+    },
     ]
+
 
     while True:
         customer = customer_queue.get()
@@ -124,17 +129,18 @@ def generate_response(
 
             if finished_conversation:
                 print(
-                    f"Finished conversation, putting order of {confirmed_quantity} in to dispense queue"
+                    f"Finished conversation, generating pix and waiting for deposit."
                 )
 
                 pix = create_payment(total)
                 print(pix)
-                send_to_arduino(pix["payload"]["payload"])
+                # send_to_arduino(pix["payload"]["payload"])
                 play_audio("Please scan the QR Code in the LCD screen to pay.")
-                print(pix["payment_id"])
-                payment = verify_payment(pix["payment_id"])
+                print(pix["paymentId"])
+                payment = verify_payment(pix["paymentId"])
                 while not payment["paid"]:
-                    payment = verify_payment(pix["payment_id"])
+                    print(payment["paid"])
+                    payment = verify_payment(pix["paymentId"])
                     time.sleep(3)
 
                 chosen_coffee = None
@@ -142,6 +148,10 @@ def generate_response(
                     if coffee["container"] == str(confirmed_container):
                         chosen_coffee = coffee
                         break
+
+                print(
+                    f"Finished conversation, putting order of container {confirmed_container}, {confirmed_quantity} grams."
+                )
 
                 measure_coffee_queue.put(
                     {"container_id": confirmed_container - 1, "weight": confirmed_quantity, "customer_id": customer, "coffee_id": chosen_coffee}
@@ -162,16 +172,21 @@ def generate_response(
             history.append({"role": "user", "content": user_response})
 
             for sp in stop_prompt:
-                prompt = f"Verify if the current reason to stop is {sp['name']}. To determine that {sp['goal']}. Return true in stop in case the conversation must stop. To determine it, you must {sp['guideline']}., only generate a message if stop is True"
-                stop, response, reason = has_to_stop(coffees, history, prompt)
-
+                
+                prompt = f"""Verify if the current reason to stop is '{sp["name"]}'.
+                            Return true if {sp["goal"]}, otherwise return `False`.
+                            To make this determination, {sp["guideline"]}.
+                            Only generate a response if 'stop = True'.
+                            """
+                stop, response = has_to_stop(coffees, history, prompt)
+                print(stop)
                 if stop:
                     print(f"State: {sp['name']}")
                     print(f"Goal: {sp['goal']}")
                     print(f"Guideline: {sp['guideline']}")
                     history.append({"role": "system", "content": response})
                     play_audio(response)
-                    if sp["name"] is 'Disinterested':
+                    if sp["name"] == 'Disinterested':
                         finished_conversation = True
                         recognize_customer_event_flag.set()
                     break
@@ -207,7 +222,11 @@ def request(
     return in_phase, message, quantity, container, total
 
 
-def has_to_stop(coffees: list, history: list, phase_prompt: str) -> tuple:
+
+
+
+
+def has_to_stop(coffees: list, history: list, prompt: str) -> tuple:
     response = client.beta.chat.completions.parse(
         model="gpt-4o",
         messages=[
@@ -215,9 +234,7 @@ def has_to_stop(coffees: list, history: list, phase_prompt: str) -> tuple:
                 "role": "system",
                 "content": f"""You are a coffee vending machine with these coffee grains available: {json.dumps(coffees)}. 
                     You provide only coffee grains and can register users with their consent.  
-                    Respond to this text according to the phase instructions: 
-                    {phase_prompt}.  
-                    Continue this conversation with the user.
+                    {prompt}.
                     """,
             }
         ]
@@ -227,9 +244,8 @@ def has_to_stop(coffees: list, history: list, phase_prompt: str) -> tuple:
     response = json.loads(response.choices[0].message.content)
     stop = response["stop"]
     message = response["message"]
-    reason = response["reason"]
 
-    return stop, message, reason
+    return stop, message
 
 
 def transcript(audio: list) -> str:
@@ -244,7 +260,8 @@ def transcript(audio: list) -> str:
         file = io.BufferedReader(open(temp_audio_file.name, "rb"))
 
         transcript = client.audio.transcriptions.create(
-            model="whisper-1", file=file, language="en"
+            model="whisper-1", file=file, language="en",
+            prompt="Reais, Etore, Henrique, Maria Luiza, Francisco, Felipe, Heitor"
         )
         user_response = transcript.text
 

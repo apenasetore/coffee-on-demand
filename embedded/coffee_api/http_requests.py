@@ -19,3 +19,13 @@ def post(url, data, headers=None):
 
     except requests.RequestException as e:
         print(f"POST request failed: {e}")
+
+
+def patch(url, data, headers=None):
+    try:
+        response = requests.patch(url, headers=headers, json=data)
+        response.raise_for_status()
+        return response
+
+    except requests.RequestException as e:
+        print(f"PATCH request failed: {e}")
