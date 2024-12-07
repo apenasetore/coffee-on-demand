@@ -41,6 +41,7 @@ stop_prompt = [
         "name": "Desinterested",
         "goal": "if the user is not interested in registering to this service.",
         "guideline": "Say goodbye to the customer.",
+        "phase_identification": "Customer has explicitly said he is not interested in registering.",
     },
 ]
 
@@ -63,7 +64,7 @@ def generate_response(
         while not finished_conversation:
             for state in phase_prompt:
                 prompt = f"""Verify if the current phase is {state['name']}.
-                        To indentify if you are in this state use this informations: {state["phase_identification"]}.
+                        To indentify if you are in this state use this information: {state["phase_identification"]}.
                         The phase's goal is: "{state['goal']}". 
                         Return true in in_phase in case the phase goal has not been accomplished. Return false in case the objective has been accomplished.
                         To reach the goal, you must {state['guideline']}.

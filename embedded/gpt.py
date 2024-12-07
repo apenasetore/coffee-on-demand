@@ -31,41 +31,47 @@ def generate_response(
     phase_prompt = [
         {
             "name": "IntroductionState",
-            "goal": "Present to the user and ask how you can help.",
-            "guideline": "Say hello and welcome the guest to the machine. Keep the conversation natural. Call them by their name, if in client mode.",
+            "goal": "Welcome the user and understand their needs.",
+            "guideline": "Greet the user warmly. If their name is known, address them personally. Ask how you can assist.",
+            "phase_identification": "The user has not started discussing coffee preferences yet."
         },
         {
             "name": "AvailableCoffeeState",
-            "goal": "Figure out what is the user's coffee of interest.",
-            "guideline": "Talk to the user about which of the available coffees suits their taste. Use the coffee description ONLY if the customer asks form more information. You can use customer's purchase history, if known, to try to make suggestions of coffees to buy.",
+            "goal": "Help the user choose a coffee based on preferences.",
+            "guideline": "Ask the user which coffee they prefer. Provide descriptions only if requested. If the user is registered, suggest coffees based on their purchase history.",
+            "phase_identification": "The user is discussing coffee options."
         },
         {
             "name": "QuantityState",
-            "goal": "Get how much of the coffee the consumer wants, considering the bounds.",
-            "guideline": "Ask about the quantity of grams the user wants. The limit is from 20 to 300 grams. Do not allow the user to get out of those bounds. Also, use coffee information to see how much coffee is in stock through the stock_grams field. Do not let the user order more than the amount in stock. If user selects invalid quantity, ask again",
+            "goal": "Determine the desired coffee quantity within the allowed range.",
+            "guideline": "Ask how many grams the user wants (20-300g). Verify the stock availability. If the quantity is invalid or exceeds stock, explain and re-prompt.",
+            "phase_identification": "The user is deciding on the coffee quantity."
         },
         {
             "name": "OrderConfirmationState",
-            "goal": "Get confirmation from the user about the order and payment.",
-            "guideline": "Confirm the order with the user by repeating it for them. Tell the price and ask for confirmation. Returns in quantity the amount of coffee the user required",
+            "goal": "Confirm the user's order and prepare for payment.",
+            "guideline": "Summarize the order, including coffee type, quantity, and total price. Ask for confirmation to proceed.",
+            "phase_identification": "The user has finalized coffee and quantity selection."
         },
         {
             "name": "GoodbyeState",
-            "goal": "Finish order and say goodbye.",
-            "guideline": "Say goodbye to the customer.",
-        },
+            "goal": "Conclude the interaction politely.",
+            "guideline": "Thank the user and say goodbye.",
+            "phase_identification": "The user has confirmed their order."
+        }
     ]
+
     stop_prompt = [
         {
-            "name": "Desinterested",
-            "goal": "The user is not interested in buying coffee anymore.",
-            "guideline": "Say goodbye to the customer.",
+            "name": "Disinterested",
+            "goal": "Handle situations where the user is no longer interested.",
+            "guideline": "Politely thank the user for their time and end the conversation."
         },
         {
             "name": "Incompatible",
-            "goal": "The user asks something not coffee or coffee beans related",
-            "guideline": "Say goodbye to the customer.",
-        },
+            "goal": "Redirect the conversation to coffee or coffee bean topics.",
+            "guideline": "If the user asks about something unrelated to coffee, politely redirect the conversation by mentioning the types of coffee or services available. Example: 'I specialize in helping with coffee selections and orders. Could I interest you in exploring our coffee options?' If the user remains uninterested, thank them for their time and end the conversation."
+        }
     ]
 
     while True:
@@ -82,14 +88,14 @@ def generate_response(
         confirmed_container = 0
         while not finished_conversation:
             for state in phase_prompt:
-                prompt = f"""Verify if the current phase is {state['name']}. The phase's goal is {state['goal']}. 
-                        Return true in inPhase in case the phase goal has not been accomplished. Return false in case the objective has been accomplished. 
-                        To reach the goal, you must {state['guideline']}. 
-                        Client's name is {name}. This client is {"not" if name == "coffee enthusiast" else ""} registered and his purchase history is {json.dumps(purchase_history) if purchase_history else '[]'}.
-                        When asked, you can use the purchase history to suggest coffees to the client based on previous purchases and customer's tastes.
-                        The price of each coffee is price per 1 gram, so you need to do the math to tell the total price.
-                        If client is not registered and wants to register in the RegisterState, return True in want_to_register, else return False. The RegisterState can be skipped if client is registered and proceed to GoodbyeState
-                        Be objective in responses, with minimum words."""
+                prompt = f"""
+                            Verify if the current phase is {state['name']}. 
+                            Use the following criteria: Phase identification: {state["phase_identification"]}. Phase goal: {state['goal']}.
+                            Return `inPhase = True` if the goal is not yet achieved, and `inPhase = False` otherwise. 
+                            To accomplish the goal follow these guidelines: {state["guideline"]}.
+                            Additional details: Client's name: {name}. Purchase history: {json.dumps(purchase_history) if purchase_history else 'None'}. Coffee price: Per gram (calculate the total price).
+                            Be concise in responses and focus on achieving the goal efficiently.
+                        """
 
                 in_phase, response, quantity, container, total = request(
                     coffees, history, prompt, None
@@ -112,7 +118,9 @@ def generate_response(
 
                     break
 
-            play_audio(response)
+            if in_phase:
+                play_audio(response)
+
             if finished_conversation:
                 print(
                     f"Finished conversation, putting order of {confirmed_quantity} in to dispense queue"
@@ -153,6 +161,8 @@ def generate_response(
             history.append({"role": "user", "content": user_response})
 
             for sp in stop_prompt:
+                if in_phase:
+                    break
                 prompt = f"Verify if the current reason to stop is {sp['name']}. To determine that {sp['goal']}. Return true in stop in case the conversation must stop. To determine it, you must {sp['guideline']}., only generate a message if stop is True"
                 stop, response, reason = has_to_stop(coffees, history, prompt)
 
@@ -162,8 +172,9 @@ def generate_response(
                     print(f"Guideline: {sp['guideline']}")
                     history.append({"role": "system", "content": response})
                     play_audio(response)
-                    finished_conversation = True
-                    recognize_customer_event_flag.set()
+                    if sp["name"] is 'Disinterested':
+                        finished_conversation = True
+                        recognize_customer_event_flag.set()
                     break
 
 
@@ -180,7 +191,6 @@ def request(
                 Respond to this text according to the phase instructions. Answer in a text-to-speech friendly way, never use topics.
                 {phase_prompt}.
                 Continue this convesation with the user.
-                The user's purchase history is {json.dumps(purchase_history) if purchase_history else "[]"}
                 """,
             }
         ]
