@@ -326,7 +326,7 @@ void initializeDisplay()
 
   tft.reset();
   tft.begin(ID);      // initialize SPI bus
-  tft.setRotation(2); // landscape
+  tft.setRotation(0); // landscape
   tft.fillScreen(WHITE);
 }
 
