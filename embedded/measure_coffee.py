@@ -2,6 +2,7 @@ import queue
 import threading
 import time
 from embedded.coffee_api.api import add_purchase
+from embedded.gpt import play_audio
 from embedded.hx711 import HX711
 import multiprocessing
 
@@ -34,9 +35,18 @@ def dispense_task(measure_coffee_queue: multiprocessing.Queue, recognize_custome
         turn_on_motor_event_flag.set()
 
         weight = 0
+        last_reading = weight
         while weight <= requested_coffee_weight: 
             weight = int(hx.get_weight(5))
             print(f"Weight = {weight}")
+            if last_reading > weight - 2: #2 gramas de erro
+                print("Weight has reduced, stopping motors.")
+                turn_on_motor_event_flag.clear()
+                play_audio("We have detected a weight reduction, please put back the coffee container.")
+            else:
+                play_audio("Resuming dispensing.")
+                turn_on_motor_event_flag.set()
+                last_reading = weight
             hx.power_down()
             hx.power_up()
             time.sleep(0.1)

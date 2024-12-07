@@ -10,6 +10,7 @@ from embedded.gpt import generate_response
 from embedded.register import register_customer
 from embedded.motors import motor_task
 from embedded.measure_coffee import dispense_task
+from embedded.cup_sensor import read_sensor_thread
 
 if __name__ == "__main__":
     rebuild_binaries_event_flag = multiprocessing.Event()
@@ -19,6 +20,9 @@ if __name__ == "__main__":
     capture_audio_event_flag = multiprocessing.Event()
     register_customer_event_flag = multiprocessing.Event()
     load_encodings_event_flag = multiprocessing.Event()
+    turn_on_cup_sensor = multiprocessing.Event()
+    removed_coffee_container = multiprocessing.Event()
+
     coffee_container = multiprocessing.Value("i", 0)
 
     measure_coffee_queue = multiprocessing.Queue()
@@ -35,8 +39,8 @@ if __name__ == "__main__":
         ),
     ).start()
 
-    # multiprocessing.Process(target=motor_task, daemon=True, args=(turn_on_motor_event_flag, coffee_container)).start()
-    # multiprocessing.Process(target=dispense_task, daemon=True, args=(measure_coffee_queue, recognize_customer_event_flag, coffee_container, turn_on_motor_event_flag, register_customer_event_flag)).start()
+    multiprocessing.Process(target=motor_task, daemon=True, args=(turn_on_motor_event_flag, turn_on_cup_sensor, removed_coffee_container, coffee_container)).start()
+    multiprocessing.Process(target=dispense_task, daemon=True, args=(measure_coffee_queue, recognize_customer_event_flag, coffee_container, turn_on_motor_event_flag, register_customer_event_flag)).start()
 
     multiprocessing.Process(
         target=recognize_customer,
@@ -69,6 +73,15 @@ if __name__ == "__main__":
             register_customer_event_flag,
             recognize_customer_event_flag,
             generate_new_encodings_event_flag,
+        ),
+    ).start()
+
+    multiprocessing.Process(
+        target=read_sensor_thread,
+        daemon=True,
+        args=(
+            turn_on_cup_sensor,
+            removed_coffee_container
         ),
     ).start()
 
