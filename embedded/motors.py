@@ -19,7 +19,7 @@ def setup():
     GPIO.setup(M4_STEP_PIN, GPIO.OUT)
     
     GPIO.setup(DIR_PIN, GPIO.OUT)
-    GPIO.output(DIR_PIN, GPIO.HIGH)
+    GPIO.output(DIR_PIN, GPIO.LOW)
 
     clean_motors()
 
@@ -58,7 +58,7 @@ def motor_task(turn_on_motor_event_flag, coffee_container):
                 for i in range(400):
                     if not turn_on_motor_event_flag.is_set():
                         break
-                    GPIO.output(DIR_PIN, GPIO.HIGH)
+                    GPIO.output(DIR_PIN, GPIO.LOW)
                     GPIO.output(step_pin, GPIO.HIGH)
                     time.sleep(delay)
                     GPIO.output(step_pin, GPIO.LOW)
@@ -72,7 +72,7 @@ def motor_task(turn_on_motor_event_flag, coffee_container):
                     if not turn_on_motor_event_flag.is_set():
                         break
 
-                    GPIO.output(DIR_PIN, GPIO.LOW)
+                    GPIO.output(DIR_PIN, GPIO.HIGH)
                     GPIO.output(step_pin, GPIO.HIGH)
                     time.sleep(delay)
                     GPIO.output(step_pin, GPIO.LOW)

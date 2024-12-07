@@ -36,7 +36,7 @@ if __name__ == "__main__":
     ).start()
 
     multiprocessing.Process(target=motor_task, daemon=True, args=(turn_on_motor_event_flag, coffee_container)).start()
-    multiprocessing.Process(target=dispense_task, daemon=True, args=(measure_coffee_queue, coffee_container, turn_on_motor_event_flag)).start()
+    multiprocessing.Process(target=dispense_task, daemon=True, args=(measure_coffee_queue, recognize_customer_event_flag, coffee_container, turn_on_motor_event_flag, register_customer_event_flag)).start()
 
     multiprocessing.Process(
         target=recognize_customer,
@@ -75,7 +75,9 @@ if __name__ == "__main__":
     try:
         while True:
             print("System on")
+            time.sleep(3)
             recognize_customer_event_flag.set()
+            #measure_coffee_queue.put({"container_id": 0, "weight": 50, "customer_id": -1, "coffee_id": 12})            
             time.sleep(100000)
     except KeyboardInterrupt:
         print("Finishing...")

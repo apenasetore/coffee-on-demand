@@ -13,7 +13,7 @@ FORMAT = pyaudio.paInt16
 CHANNELS = 1
 RATE = 48000
 CHUNK = int(RATE * CHUNK_DURATION_MS / 1000)
-INDEX = 1
+INDEX = 2
 
 
 def amplify_audio(data, amplification_factor):
@@ -35,7 +35,7 @@ def capture_audio(audio_queue: multiprocessing.Queue, capture_audio_event_flag):
         rate=RATE,
         input=True,
         frames_per_buffer=CHUNK,
-        input_device_index=0,
+        input_device_index=INDEX,
     )
 
     while True:

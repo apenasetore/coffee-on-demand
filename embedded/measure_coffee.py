@@ -5,14 +5,14 @@ from embedded.coffee_api.api import add_purchase
 from embedded.hx711 import HX711
 import multiprocessing
 
-DT_PIN = 5
-SCK_PIN = 6
+DT_PIN = 27
+SCK_PIN = 17
 
 
-def dispense_task(measure_coffee_queue: multiprocessing.Queue, recognize_customer_event_flag, coffee_container, turn_on_motor_event_flag):
+def dispense_task(measure_coffee_queue: multiprocessing.Queue, recognize_customer_event_flag, coffee_container, turn_on_motor_event_flag, register_customer_event_flag):
     hx = HX711(DT_PIN, SCK_PIN)
     print("Setting up load cell")
-    referenceUnit =  -401339.77777777775/211
+    referenceUnit =  401339.77777777775/211
     hx.set_reference_unit(referenceUnit)
     hx.reset()
     hx.tare()
@@ -39,15 +39,19 @@ def dispense_task(measure_coffee_queue: multiprocessing.Queue, recognize_custome
             print(f"Weight = {weight}")
             hx.power_down()
             hx.power_up()
-            time.sleep(0.2)
+            time.sleep(0.1)
         
         time.sleep(2)
-        print("Finished dispense")
         weight = int(hx.get_weight(5))
-        add_purchase(customer_id, weight, coffee_id)
+        print(f"Finished dispense of coffee {coffee_id} with weight : {weight}")
 
         turn_on_motor_event_flag.clear()
-        recognize_customer_event_flag.set()
+        if customer_id == -1:
+            register_customer_event_flag.set()
+        else:
+            print("Adding purchase to the customer")
+            add_purchase(customer_id, weight, coffee_id)
+            recognize_customer_event_flag.set()
         
 
 

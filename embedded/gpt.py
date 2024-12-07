@@ -45,14 +45,9 @@ def generate_response(
             "guideline": "Ask about the quantity of grams the user wants. The limit is from 20 to 300 grams. Do not allow the user to get out of those bounds. Also, use coffee information to see how much coffee is in stock through the stock_grams field. Do not let the user order more than the amount in stock. If user selects invalid quantity, ask again",
         },
         {
-            "name": "PaymentState",
+            "name": "OrderConfirmationState",
             "goal": "Get confirmation from the user about the order and payment.",
             "guideline": "Confirm the order with the user by repeating it for them. Tell the price and ask for confirmation. Returns in quantity the amount of coffee the user required",
-        },
-        {
-            "name": "RegisterState",
-            "goal": "Get first and last name of the customer.",
-            "guideline": "Ask if the guest wants to register as a customer; if not, close the phase. If yes, get their first and last name.",
         },
         {
             "name": "GoodbyeState",
