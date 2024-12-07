@@ -61,7 +61,7 @@ def generate_response(
             pass
 
         purchase = purchase_queue.get()
-        weight = purchase["customer_id"]
+        weight = purchase["weight"]
         coffee_id = purchase["coffee_id"]
 
         confirmed_firstname = None

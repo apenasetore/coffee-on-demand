@@ -38,16 +38,19 @@ def dispense_task(measure_coffee_queue: multiprocessing.Queue, purchase_queue: m
 
         weight = 0
         last_reading = weight
-        while weight <= requested_coffee_weight: 
+        weight_reduction = False
+        while weight <= requested_coffee_weight and not weight_reduction: 
             weight = int(hx.get_weight(5))
             send_to_arduino(f"UPDATE:WEIGHT:{weight}")
             print(f"Weight = {weight}")
-            if last_reading > weight - 2: #2 gramas de erro
+            if last_reading > weight + 2: #2 gramas de erro
+                print(f"Last weight = {last_reading}")
                 print("Weight has reduced, stopping motors.")
                 turn_on_motor_event_flag.clear()
                 play_audio("We have detected a weight reduction, please put back the coffee container.")
-            else:
+            elif weight_reduction:
                 play_audio("Resuming dispensing.")
+                weight_reduction = False
                 turn_on_motor_event_flag.set()
                 last_reading = weight
             hx.power_down()

@@ -27,11 +27,14 @@ def read_sensor_thread(turn_on_cup_sensor: Event, removed_coffee_container: Even
         turn_on_cup_sensor (Event): Event to indicate when the sensor monitoring should start.
         removed_coffee_container (Event): Event to indicate when the coffee container has been removed.
     """
+    setup()
     while True:
         while not turn_on_cup_sensor.is_set():
             pass
-        value = read_sensor()
+        value = not read_sensor()
         print(f"Sensor state: {value}")
         if not value:  # If no object is detected
             removed_coffee_container.set()
-        time.sleep(0.5)  # Delay between readings
+        else:
+            removed_coffee_container.clear()
+        time.sleep(0.2)  # Delay between readings
