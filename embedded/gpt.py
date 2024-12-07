@@ -4,6 +4,8 @@ import multiprocessing
 import os
 import time
 import tempfile
+import concurrent.futures
+
 from dotenv import load_dotenv
 from gtts import gTTS
 import wave
@@ -11,6 +13,7 @@ from embedded.gpt_dtos.dto import ResponseFormat, ResponseStopFormat
 import pygame
 from pydub import AudioSegment
 from openai import OpenAI
+
 
 from embedded.audio import CHANNELS, RATE
 from embedded.coffee_api.api import get_purchases, get_coffees, create_payment, verify_payment
@@ -68,11 +71,12 @@ def generate_response(
     ]
 
     stop_prompt = [
-        {
-            "name": "Disinterested",
-            "goal": "Handle situations where the user is no longer interested.",
-            "guideline": "Politely thank the user for their time and end the conversation."
-        },
+           {
+        "name": "Disinterested",
+        "goal": "the user  explicitly said he is no longer interested in coffee.",
+        "guideline": "Use the history of the conversation to determine and generate a polite response.",
+        "phase_identification": "The user has explicitly stated that they do not want anything related to coffee."
+    },
     ]
 
     while True:
@@ -162,9 +166,15 @@ def generate_response(
             history.append({"role": "user", "content": user_response})
 
             for sp in stop_prompt:
-                prompt = f"Verify if the current reason to stop is {sp['name']}. To determine that {sp['goal']}. Return true in stop in case the conversation must stop. To determine it, you must {sp['guideline']}., only generate a message if stop is True"
+                
+                prompt = f"""Verify if the current reason to stop is '{state["name"]}'.
+                            Determine if {state["goal"]}. Return `True` if the conversation must stop, otherwise return `False`.
+                            To make this determination, {state["guideline"]}.
+                            Additionally, use the following criteria as context: Phase identification: {state["phase_identification"]}.
+                            Only generate a response if 'stop = True'.
+                            """
                 stop, response, reason = has_to_stop(coffees, history, prompt)
-
+                print(stop)
                 if stop:
                     print(f"State: {sp['name']}")
                     print(f"Goal: {sp['goal']}")
@@ -244,7 +254,8 @@ def transcript(audio: list) -> str:
         file = io.BufferedReader(open(temp_audio_file.name, "rb"))
 
         transcript = client.audio.transcriptions.create(
-            model="whisper-1", file=file, language="en"
+            model="whisper-1", file=file, language="en",
+            prompt="Reais, Etore, Henrique, Maria Luiza, Francisco, Felipe, Heitor"
         )
         user_response = transcript.text
 
