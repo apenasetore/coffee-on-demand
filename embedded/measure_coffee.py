@@ -10,7 +10,7 @@ DT_PIN = 27
 SCK_PIN = 17
 
 
-def dispense_task(measure_coffee_queue: multiprocessing.Queue, recognize_customer_event_flag, coffee_container, turn_on_motor_event_flag, register_customer_event_flag):
+def dispense_task(measure_coffee_queue: multiprocessing.Queue, purchase_queue: multiprocessing.Queue, recognize_customer_event_flag, coffee_container, turn_on_motor_event_flag, register_customer_event_flag):
     hx = HX711(DT_PIN, SCK_PIN)
     print("Setting up load cell")
     referenceUnit =  401339.77777777775/211
@@ -57,6 +57,9 @@ def dispense_task(measure_coffee_queue: multiprocessing.Queue, recognize_custome
 
         turn_on_motor_event_flag.clear()
         if customer_id == -1:
+            purchase_queue.put(
+                {"weight": weight, "coffee_id": coffee_id}
+            )
             register_customer_event_flag.set()
         else:
             print("Adding purchase to the customer")

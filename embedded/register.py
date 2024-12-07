@@ -48,6 +48,7 @@ stop_prompt = [
 
 def generate_response(
     audio_queue: multiprocessing.Queue,
+    purchase_queue: multiprocessing.Queue,
     capture_audio_event_flag,
     register_customer_event_flag,
     recognize_customer_event_flag,
@@ -57,6 +58,11 @@ def generate_response(
     while True:
         while not register_customer_event_flag.is_set():
             pass
+
+        purchase = purchase_queue.get()
+        weight = purchase["customer_id"]
+        coffee_id = purchase["coffee_id"]
+
         confirmed_firstname = None
         confirmed_lastname = None
         finished_conversation = False
@@ -92,9 +98,11 @@ def generate_response(
                         gpt.play_audio(
                             "I've already taken your pictures, now I will send them to registration! Thank you for your purchase."
                         )
-                        register_new_customer(
+                        new_id = register_new_customer(
                             confirmed_firstname, confirmed_lastname, pics
                         )
+                        coffee_api.add_purchase(new_id, weight, coffee_id)
+
                         register_customer_event_flag.clear()
                         generate_new_encodings_event_flag.set()
                         print(f"Finished register phase conversation.")
@@ -142,6 +150,8 @@ def register_new_customer(firstname: str, lastname: str, pics: list):
     new_customer = coffee_api.add_customer(firstname, lastname)
     for pic in pics:
         coffee_api.add_picture(new_customer["customer"][0]["id"], pic)
+
+    return new_customer["customer"][0]["id"]
 
 
 def request(history: list, phase_prompt: str) -> tuple:
@@ -235,6 +245,7 @@ def capture_pictures_base64(picture_count, delay):
 
 def register_customer(
     audio_queue: multiprocessing.Queue,
+    purchase_queue: multiprocessing.Queue,
     capture_audio_event_flag,
     register_customer_event_flag,
     recognize_customer_event_flag,
@@ -242,6 +253,7 @@ def register_customer(
 ):
     generate_response(
         audio_queue,
+        purchase_queue,
         capture_audio_event_flag,
         register_customer_event_flag,
         recognize_customer_event_flag,

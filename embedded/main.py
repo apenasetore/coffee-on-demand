@@ -28,6 +28,7 @@ if __name__ == "__main__":
     measure_coffee_queue = multiprocessing.Queue()
     customer_queue = multiprocessing.Queue()
     audio_queue = multiprocessing.Queue()
+    purchase_queue = multiprocessing.Queue()
 
     multiprocessing.Process(
         target=generate_new_encodings,
@@ -40,7 +41,7 @@ if __name__ == "__main__":
     ).start()
 
     multiprocessing.Process(target=motor_task, daemon=True, args=(turn_on_motor_event_flag, turn_on_cup_sensor, removed_coffee_container, coffee_container)).start()
-    multiprocessing.Process(target=dispense_task, daemon=True, args=(measure_coffee_queue, recognize_customer_event_flag, coffee_container, turn_on_motor_event_flag, register_customer_event_flag)).start()
+    multiprocessing.Process(target=dispense_task, daemon=True, args=(measure_coffee_queue, purchase_queue, recognize_customer_event_flag, coffee_container, turn_on_motor_event_flag, register_customer_event_flag)).start()
 
     multiprocessing.Process(
         target=recognize_customer,
@@ -69,6 +70,7 @@ if __name__ == "__main__":
         daemon=True,
         args=(
             audio_queue,
+            purchase_queue,
             capture_audio_event_flag,
             register_customer_event_flag,
             recognize_customer_event_flag,

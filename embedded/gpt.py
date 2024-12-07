@@ -129,7 +129,7 @@ def generate_response(
 
             if finished_conversation:
                 print(
-                    f"Finished conversation, putting order of {confirmed_quantity} in to dispense queue"
+                    f"Finished conversation, generating pix and waiting for deposit."
                 )
 
                 pix = create_payment(total)
@@ -148,6 +148,10 @@ def generate_response(
                     if coffee["container"] == str(confirmed_container):
                         chosen_coffee = coffee
                         break
+
+                print(
+                    f"Finished conversation, putting order of container {confirmed_container}, {confirmed_quantity} grams."
+                )
 
                 measure_coffee_queue.put(
                     {"container_id": confirmed_container - 1, "weight": confirmed_quantity, "customer_id": customer, "coffee_id": chosen_coffee}
