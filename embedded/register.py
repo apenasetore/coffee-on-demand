@@ -119,6 +119,7 @@ def generate_response(
                 print("Got audio from queue")
             except Exception as e:
                 print("No response given by the customer, restarting flow")
+                coffee_api.update_coffee_quantity(coffee_id, weight)
                 capture_audio_event_flag.clear()
                 register_customer_event_flag.clear()
                 recognize_customer_event_flag.set()
@@ -139,6 +140,7 @@ def generate_response(
                     print(f"Message: {response}")
                     history.append({"role": "system", "content": response})
                     gpt.play_audio(response)
+                    coffee_api.update_coffee_quantity(coffee_id, weight)
                     register_customer_event_flag.clear()
                     recognize_customer_event_flag.set()
                     finished_conversation = True
