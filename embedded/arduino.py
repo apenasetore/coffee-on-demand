@@ -27,9 +27,9 @@ def send_to_arduino(payload: str):
     
     try:
         with serial.Serial(port, 9600, timeout=2) as arduino:  # Correct usage of Serial class
-            payload = payload + "\n"
+            payload = payload
             arduino.write(payload.encode())
-            print("Payload sent successfully.")
+            print(f"Sent to arduino {payload}")
     except serial.SerialException as e:
         print(f"Failed to send payload: {e}")
 

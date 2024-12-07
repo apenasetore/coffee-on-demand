@@ -63,7 +63,6 @@ def motor_task(turn_on_motor_event_flag, turn_on_cup_sensor, removed_coffee_cont
                         break
                     if removed_coffee_container.is_set():
                         print("Removed coffee container")
-                        play_audio("Please put the container in place.")
                         break
                     GPIO.output(DIR_PIN, GPIO.LOW)
                     GPIO.output(step_pin, GPIO.HIGH)
@@ -81,7 +80,6 @@ def motor_task(turn_on_motor_event_flag, turn_on_cup_sensor, removed_coffee_cont
                     
                     if removed_coffee_container.is_set():
                         print("Removed coffee container")
-                        play_audio("Please put the container in place.")
                         break
 
                     GPIO.output(DIR_PIN, GPIO.HIGH)

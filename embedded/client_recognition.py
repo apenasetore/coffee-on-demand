@@ -69,12 +69,14 @@ def recognize_customer(
 ):
     data = load_model()
     video_capture = cv2.VideoCapture(0)
-
     while True:
-
+        displayed_info = False
         face_detection_count = defaultdict(int)
-        send_to_arduino("UPDATE:STATE:IDLE")
         while recognize_customer_event_flag.is_set():
+
+            if not displayed_info:
+                displayed_info = True
+                send_to_arduino("UPDATE:STATE:IDLE")
 
             if load_encodings_event_flag.is_set():
                 data = load_model()

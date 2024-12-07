@@ -124,8 +124,12 @@ def generate_response(
 
                     break
 
+            
+
             if in_phase:
                 play_audio(response)
+            else:
+                play_audio("Sorry, i did not understand, can you repeat?")
 
             if finished_conversation:
                 print(
@@ -133,7 +137,7 @@ def generate_response(
                 )
 
                 pix = create_payment(total)
-                send_to_arduino(f"UPDATE:PIX:{pix["payload"]["payload"]}")
+                send_to_arduino(f"UPDATE:PIX:{pix['payload']['payload']}")
                 play_audio("Please scan the QR Code in the LCD screen to pay.")
                 payment = verify_payment(pix["paymentId"])
                 while not payment["paid"]:
@@ -179,7 +183,6 @@ def generate_response(
                             Only generate a response if 'stop = True'.
                             """
                 stop, response = has_to_stop(coffees, history, prompt)
-                print(stop)
                 if stop:
                     print(f"State: {sp['name']}")
                     print(f"Goal: {sp['goal']}")
