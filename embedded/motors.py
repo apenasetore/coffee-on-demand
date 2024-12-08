@@ -32,15 +32,14 @@ def clean_motors():
     print("Cleaned motors")
 
 
-def motor_task(turn_on_motor_event_flag, turn_on_cup_sensor, removed_coffee_container, coffee_container):
+def motor_task(turn_on_motor_event_flag, removed_coffee_container, coffee_container):
     setup()
 
     coffee_configs = [M1_STEP_PIN, M2_STEP_PIN, M3_STEP_PIN, M4_STEP_PIN]
-    delay = 0.0005
+    delay = 0.0008
 
     try:
         while True:
-            print("Waiting for event flag")
             while not turn_on_motor_event_flag.is_set():
                 pass
 
@@ -54,11 +53,11 @@ def motor_task(turn_on_motor_event_flag, turn_on_cup_sensor, removed_coffee_cont
 
                 step_pin = coffee_configs[coffee_index]
 
-            turn_on_cup_sensor.set()
+
 
             if turn_on_motor_event_flag.is_set():
                 print(f"Forward {step_pin}")
-                for i in range(400):
+                for i in range(500):
                     if not turn_on_motor_event_flag.is_set():
                         break
                     if removed_coffee_container.is_set():
