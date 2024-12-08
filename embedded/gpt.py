@@ -16,7 +16,12 @@ from openai import OpenAI
 
 
 from embedded.audio import CHANNELS, RATE
-from embedded.coffee_api.api import get_purchases, get_coffees, create_payment, verify_payment
+from embedded.coffee_api.api import (
+    get_purchases,
+    get_coffees,
+    create_payment,
+    verify_payment,
+)
 from embedded.arduino import send_to_arduino
 
 load_dotenv()
@@ -66,13 +71,12 @@ def generate_response(
 
 
     stop_prompt = [
-           {
-        "name": "Disinterested",
-        "goal": "the user explicitly said he is no longer interested in the buying process.",
-        "guideline": "The user must say explicitly that he is not interest in anything coffee related."
-    },
+        {
+            "name": "Disinterested",
+            "goal": "the user explicitly said he is no longer interested in the buying process.",
+            "guideline": "The user must say explicitly that he is not interest in anything coffee related.",
+        },
     ]
-
 
     while True:
         customer = customer_queue.get()
@@ -123,17 +127,13 @@ def generate_response(
 
                     break
 
-            
-
             if in_phase:
                 play_audio(response)
             else:
                 play_audio("Sorry, i did not understand, can you repeat?")
 
             if finished_conversation:
-                print(
-                    f"Finished conversation, generating pix and waiting for deposit."
-                )
+                print(f"Finished conversation, generating pix and waiting for deposit.")
 
                 pix = create_payment(total)
                 send_to_arduino(f"UPDATE:PIX:{pix['payload']['payload']}")
@@ -147,7 +147,7 @@ def generate_response(
                 chosen_coffee = None
                 for coffee in coffees:
                     if coffee["container"] == str(confirmed_container):
-                        chosen_coffee = coffee
+                        chosen_coffee = coffee["id"]
                         break
 
                 print(
@@ -155,7 +155,12 @@ def generate_response(
                 )
 
                 measure_coffee_queue.put(
-                    {"container_id": confirmed_container - 1, "weight": confirmed_quantity, "customer_id": customer, "coffee_id": chosen_coffee}
+                    {
+                        "container_id": confirmed_container - 1,
+                        "weight": confirmed_quantity,
+                        "customer_id": customer,
+                        "coffee_id": chosen_coffee,
+                    }
                 )
 
                 break
@@ -175,7 +180,7 @@ def generate_response(
             history.append({"role": "user", "content": user_response})
 
             for sp in stop_prompt:
-                
+
                 prompt = f"""Verify if the current reason to stop is '{sp["name"]}'.
                             Return true if {sp["goal"]}, otherwise return `False`.
                             To make this determination, {sp["guideline"]}.
@@ -188,7 +193,7 @@ def generate_response(
                     print(f"Guideline: {sp['guideline']}")
                     history.append({"role": "system", "content": response})
                     play_audio(response)
-                    if sp["name"] == 'Disinterested':
+                    if sp["name"] == "Disinterested":
                         finished_conversation = True
                         recognize_customer_event_flag.set()
                     break
@@ -257,8 +262,10 @@ def transcript(audio: list) -> str:
         file = io.BufferedReader(open(temp_audio_file.name, "rb"))
 
         transcript = client.audio.transcriptions.create(
-            model="whisper-1", file=file, language="en",
-            prompt="Reais, Etore, Henrique, Maria Luiza, Francisco, Felipe, Heitor"
+            model="whisper-1",
+            file=file,
+            language="en",
+            prompt="Reais, Etore, Henrique, Maria Luiza, Francisco, Felipe, Heitor",
         )
         user_response = transcript.text
 
