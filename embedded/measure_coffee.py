@@ -49,7 +49,6 @@ def dispense_task(measure_coffee_queue: multiprocessing.Queue, purchase_queue: m
             print(f"Weight = {weight}")
             if last_reading > weight + 2: #2 gramas de erro
                 weight_reduction = True
-                print(f"Last weight = {last_reading}")
                 print("Weight has reduced, stopping motors.")
                 turn_on_motor_event_flag.clear()
                 play_audio("We have detected a weight reduction, please put back the coffee container.")
@@ -62,9 +61,6 @@ def dispense_task(measure_coffee_queue: multiprocessing.Queue, purchase_queue: m
                 last_reading = weight
             hx.power_down()
             hx.power_up()
-            time.sleep(0.1)
-            print("Condição",weight <= requested_coffee_weight and not weight_reduction)
-            print("Weight",weight,"Requested coffee Weight",requested_coffee_weight,"Weight reduction",weight_reduction)
         print("Got out")
         
         time.sleep(2)
