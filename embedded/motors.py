@@ -11,6 +11,8 @@ M3_STEP_PIN = 13
 M4_STEP_PIN = 26
 DIR_PIN = 12
 
+DELAY = 0.0005
+BIG_DELAY = 0.002
 
 def setup():
     GPIO.setmode(GPIO.BCM)
@@ -32,11 +34,11 @@ def clean_motors():
     print("Cleaned motors")
 
 
-def motor_task(turn_on_motor_event_flag, removed_coffee_container, coffee_container):
+def motor_task(turn_on_motor_event_flag, removed_coffee_container, slow_mode_event_flag, coffee_container):
     setup()
 
     coffee_configs = [M1_STEP_PIN, M2_STEP_PIN, M3_STEP_PIN, M4_STEP_PIN]
-    delay = 0.0008
+    delay = DELAY
 
     try:
         while True:
@@ -56,8 +58,10 @@ def motor_task(turn_on_motor_event_flag, removed_coffee_container, coffee_contai
 
 
             if turn_on_motor_event_flag.is_set():
-                print(f"Forward {step_pin}")
+                print(f"Forward {step_pin} with delay {delay}")
                 for i in range(500):
+                    if slow_mode_event_flag.is_set():
+                        delay = BIG_DELAY
                     if not turn_on_motor_event_flag.is_set():
                         break
                     if removed_coffee_container.is_set():
@@ -69,14 +73,15 @@ def motor_task(turn_on_motor_event_flag, removed_coffee_container, coffee_contai
                     GPIO.output(step_pin, GPIO.LOW)
                     time.sleep(delay)
 
-            time.sleep(0.1)
+            time.sleep(0.05)
 
             if turn_on_motor_event_flag.is_set():
                 print("Backwards")
                 for i in range(300):
+                    if slow_mode_event_flag.is_set():
+                        delay = BIG_DELAY
                     if not turn_on_motor_event_flag.is_set():
                         break
-                    
                     if removed_coffee_container.is_set():
                         print("Removed coffee container")
                         break
@@ -87,7 +92,7 @@ def motor_task(turn_on_motor_event_flag, removed_coffee_container, coffee_contai
                     GPIO.output(step_pin, GPIO.LOW)
                     time.sleep(delay)
 
-            time.sleep(0.1)
+            time.sleep(0.05)
     except KeyboardInterrupt:
         print("Cleaning motors")
         clean_motors()

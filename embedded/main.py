@@ -7,7 +7,7 @@ import serial
 from embedded.arduino import initialize_arduino
 from embedded.audio import capture_audio
 
-from embedded.client_recognition import recognize_customer, generate_new_encodings
+from embedded.client_recognition import initialize_cam, recognize_customer, generate_new_encodings
 
 from embedded.gpt import generate_response
 from embedded.register import register_customer
@@ -18,6 +18,7 @@ from embedded.cup_sensor import read_sensor_thread
 
 if __name__ == "__main__":
     initialize_arduino()
+    initialize_cam()
 
     rebuild_binaries_event_flag = multiprocessing.Event()
     recognize_customer_event_flag = multiprocessing.Event()
@@ -28,8 +29,9 @@ if __name__ == "__main__":
     load_encodings_event_flag = multiprocessing.Event()
     turn_on_cup_sensor = multiprocessing.Event()
     removed_coffee_container = multiprocessing.Event()
+    slow_mode_event_flag = multiprocessing.Event()
 
-    coffee_container = multiprocessing.Value("i", 0)
+    coffee_container = multiprocessing.Value("i", 1)
 
     measure_coffee_queue = multiprocessing.Queue()
     customer_queue = multiprocessing.Queue()
@@ -51,8 +53,8 @@ if __name__ == "__main__":
         daemon=True,
         args=(
             turn_on_motor_event_flag,
-            turn_on_cup_sensor,
             removed_coffee_container,
+            slow_mode_event_flag,
             coffee_container,
         ),
     ).start()
@@ -65,13 +67,15 @@ if __name__ == "__main__":
             recognize_customer_event_flag,
             coffee_container,
             turn_on_motor_event_flag,
+            slow_mode_event_flag,
             register_customer_event_flag,
+            turn_on_cup_sensor
         ),
     ).start()
 
     multiprocessing.Process(
         target=recognize_customer,
-        args=(recognize_customer_event_flag, load_encodings_event_flag, customer_queue),
+        args=(recognize_customer_event_flag, load_encodings_event_flag, register_customer_event_flag, customer_queue),
         daemon=True,
     ).start()
 

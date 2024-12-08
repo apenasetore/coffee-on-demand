@@ -32,7 +32,6 @@ def read_sensor_thread(turn_on_cup_sensor: Event, removed_coffee_container: Even
         while not turn_on_cup_sensor.is_set():
             pass
         value = not read_sensor()
-        print(f"Sensor state: {value}")
         if not value:  # If no object is detected
             removed_coffee_container.set()
         else:

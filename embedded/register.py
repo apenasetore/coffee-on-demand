@@ -12,6 +12,7 @@ import time
 import numpy as np
 import embedded.coffee_api.api as coffee_api
 from embedded.arduino import send_to_arduino
+from embedded.client_recognition import video_capture
 
 load_dotenv()
 API_KEY = os.getenv("API_KEY")
@@ -214,9 +215,6 @@ def has_to_stop(history: list, phase_prompt: str) -> tuple:
 
 
 def capture_pictures_base64(picture_count, delay):
-    video_capture = cv2.VideoCapture(0)
-    if not video_capture.isOpened():
-        raise RuntimeError("Failed to open video capture device.")
 
     time.sleep(0.3)
     base64_images = []
@@ -238,12 +236,10 @@ def capture_pictures_base64(picture_count, delay):
 
             time.sleep(delay)
     except Exception as e:
+        print(f"Error taking pictures: {e}")
         gpt.play_audio(
             "Oh, some error occurred during the pictures. So we cant't procceed. Anyway, thank you for your purchase!"
         )
-    finally:
-        video_capture.release()
-        print("Released video capture device.")
 
     return base64_images
 

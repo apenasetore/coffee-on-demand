@@ -11,7 +11,7 @@ DT_PIN = 27
 SCK_PIN = 17
 
 
-def dispense_task(measure_coffee_queue: multiprocessing.Queue, purchase_queue: multiprocessing.Queue, recognize_customer_event_flag, coffee_container, turn_on_motor_event_flag, register_customer_event_flag,turn_on_cup_sensor):
+def dispense_task(measure_coffee_queue: multiprocessing.Queue, purchase_queue: multiprocessing.Queue, recognize_customer_event_flag, coffee_container, turn_on_motor_event_flag, slow_mode_event_flag, register_customer_event_flag, turn_on_cup_sensor):
     hx = HX711(DT_PIN, SCK_PIN)
     print("Setting up load cell")
     referenceUnit =  401339.77777777775/211
@@ -32,6 +32,7 @@ def dispense_task(measure_coffee_queue: multiprocessing.Queue, purchase_queue: m
             print(f"Updated container to dispense to {container_id}")
             coffee_container.value = container_id
         
+        send_to_arduino("UPDATE:WEIGHT:0")
         send_to_arduino("UPDATE:STATE:DISPENSING")
         requested_coffee_weight = measure_coffee_request["weight"]
         turn_on_motor_event_flag.set()
@@ -44,6 +45,10 @@ def dispense_task(measure_coffee_queue: multiprocessing.Queue, purchase_queue: m
             weight = int(hx.get_weight(5))
             if weight < 0:
                 weight = 0
+
+            if requested_coffee_weight - weight < 30:
+                print("Activating slow mode")
+                slow_mode_event_flag.set()
 
             send_to_arduino(f"UPDATE:WEIGHT:{weight}")
             print(f"Weight = {weight}")
@@ -61,22 +66,24 @@ def dispense_task(measure_coffee_queue: multiprocessing.Queue, purchase_queue: m
                 last_reading = weight
             hx.power_down()
             hx.power_up()
-        print("Got out")
-        
-        time.sleep(2)
-        weight = int(hx.get_weight(5))
-        print(f"Finished dispense of coffee {coffee_id} with weight : {weight}")
-        send_to_arduino(f"UPDATE:WEIGHT:{weight}")
-
         
         turn_on_motor_event_flag.clear()
         turn_on_cup_sensor.clear()
+        slow_mode_event_flag.clear()
+
+        weight = int(hx.get_weight(5))
+        print(f"Finished dispense of coffee {coffee_id} with weight : {weight}")
+        send_to_arduino(f"UPDATE:WEIGHT:{weight}")
+        
+        time.sleep(5)
+
         if customer_id == -1:
             purchase_queue.put(
                 {"weight": weight, "coffee_id": coffee_id}
             )
             register_customer_event_flag.set()
         else:
+            play_audio("I've finished dispensing. Thank you!")
             print("Adding purchase to the customer")
             add_purchase(customer_id, weight, coffee_id)
             recognize_customer_event_flag.set()

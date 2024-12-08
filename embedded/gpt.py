@@ -136,8 +136,8 @@ def generate_response(
                 print(f"Finished conversation, generating pix and waiting for deposit.")
 
                 pix = create_payment(total)
-                send_to_arduino(f"UPDATE:PIX:{pix['payload']['payload']}")
                 play_audio("Please scan the QR Code in the LCD screen to pay.")
+                send_to_arduino(f"UPDATE:PIX:{pix['payload']['payload']}")
                 payment = verify_payment(pix["paymentId"])
                 while not payment["paid"]:
                     print(payment["paid"])
@@ -153,6 +153,8 @@ def generate_response(
                 print(
                     f"Finished conversation, putting order of container {confirmed_container}, {confirmed_quantity} grams."
                 )
+
+                play_audio("Payment confirmed! Let's dispense!")
 
                 measure_coffee_queue.put(
                     {
