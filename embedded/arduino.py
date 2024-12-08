@@ -1,49 +1,35 @@
+import time
 import serial.tools.list_ports
 import serial
 
 
-def get_arduino():
-    """
-    Finds the Arduino USB port by checking available COM ports.
-    Returns:
-        str: The port name (e.g., 'COM3' or '/dev/ttyUSB0') if found, otherwise None.
-    """
-    portas = serial.tools.list_ports.comports()
-    for porta in portas:
-        if porta.manufacturer and "Arduino" in porta.manufacturer:
-            return porta.device
-    return None
+arduino = None
+
+
+def initialize_arduino():
+    global arduino
+    arduino_port = None
+    ports = serial.tools.list_ports.comports()
+    for port in ports:
+        if port.manufacturer and "Arduino" in port.manufacturer:
+            arduino_port = port.device
+
+    if not arduino_port:
+        raise ValueError("Arduino device not found.")
+
+    print(f"Conectando ao Arduino na porta: {port}")
+    arduino = serial.Serial(arduino_port, 9600, timeout=2)
 
 
 def send_to_arduino(payload: str):
     """
-    Sends a string payload to the Arduino via serial communication.
-    Args:
-        payload (str): The data to send to the Arduino.
+    Sends a string payload to the Arduino via serial communication and prints the response.
     """
-    port = get_arduino()
-    if not port:
-        raise ValueError("Arduino device not found.")
-    
     try:
-        with serial.Serial(port, 9600, timeout=2) as arduino:  # Correct usage of Serial class
-            payload = payload
-            arduino.write(payload.encode())
-            print(f"Sent to arduino {payload}")
-    except serial.SerialException as e:
-        print(f"Failed to send payload: {e}")
+        time.sleep(0.2)  # Aguarda a inicialização do Arduino
+        payload = payload + "\n"  # Adiciona o caractere de término
+        print(f"Enviando: {payload.encode()}")
 
-
-def load_arduino():
-    """
-    Initializes communication with the Arduino.
-    """
-    port = get_arduino()
-    if not port:
-        raise ValueError("Arduino device not found.")
-    
-    try:
-        with serial.Serial(port, 9600, timeout=2) as arduino:  # Correct usage of Serial class
-            print("Arduino connected successfully.")
+        arduino.write(payload.encode())  # Envia os dados)
     except serial.SerialException as e:
-        print(f"Failed to connect to Arduino: {e}")
+        print(f"Erro na comunicação com o Arduino: {e}")
