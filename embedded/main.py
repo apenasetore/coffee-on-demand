@@ -2,6 +2,9 @@ import threading
 import multiprocessing
 import time
 import queue
+
+import serial
+from embedded.arduino import initialize_arduino
 from embedded.audio import capture_audio
 
 from embedded.client_recognition import recognize_customer, generate_new_encodings
@@ -12,7 +15,10 @@ from embedded.motors import motor_task
 from embedded.measure_coffee import dispense_task
 from embedded.cup_sensor import read_sensor_thread
 
+
 if __name__ == "__main__":
+    initialize_arduino()
+
     rebuild_binaries_event_flag = multiprocessing.Event()
     recognize_customer_event_flag = multiprocessing.Event()
     generate_new_encodings_event_flag = multiprocessing.Event()
@@ -40,8 +46,28 @@ if __name__ == "__main__":
         ),
     ).start()
 
-    multiprocessing.Process(target=motor_task, daemon=True, args=(turn_on_motor_event_flag, turn_on_cup_sensor, removed_coffee_container, coffee_container)).start()
-    multiprocessing.Process(target=dispense_task, daemon=True, args=(measure_coffee_queue, purchase_queue, recognize_customer_event_flag, coffee_container, turn_on_motor_event_flag, register_customer_event_flag)).start()
+    multiprocessing.Process(
+        target=motor_task,
+        daemon=True,
+        args=(
+            turn_on_motor_event_flag,
+            turn_on_cup_sensor,
+            removed_coffee_container,
+            coffee_container,
+        ),
+    ).start()
+    multiprocessing.Process(
+        target=dispense_task,
+        daemon=True,
+        args=(
+            measure_coffee_queue,
+            purchase_queue,
+            recognize_customer_event_flag,
+            coffee_container,
+            turn_on_motor_event_flag,
+            register_customer_event_flag,
+        ),
+    ).start()
 
     multiprocessing.Process(
         target=recognize_customer,
@@ -81,10 +107,7 @@ if __name__ == "__main__":
     multiprocessing.Process(
         target=read_sensor_thread,
         daemon=True,
-        args=(
-            turn_on_cup_sensor,
-            removed_coffee_container
-        ),
+        args=(turn_on_cup_sensor, removed_coffee_container),
     ).start()
 
     try:
@@ -92,7 +115,7 @@ if __name__ == "__main__":
             print("System on")
             time.sleep(3)
             recognize_customer_event_flag.set()
-            #measure_coffee_queue.put({"container_id": 0, "weight": 50, "customer_id": -1, "coffee_id": 12})            
+            # measure_coffee_queue.put({"container_id": 0, "weight": 50, "customer_id": -1, "coffee_id": 12})
             time.sleep(100000)
     except KeyboardInterrupt:
         print("Finishing...")

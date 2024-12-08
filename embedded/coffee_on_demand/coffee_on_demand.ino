@@ -268,19 +268,32 @@ void dispensing_state()
     tft.println("Dispensing...");
     tft.setCursor(24, 185);
     tft.setTextSize(1);
+
+
     char dynamicString[20];
-    sprintf(dynamicString, "Weight: %dg", weight);
+    sprintf(dynamicString, "%dg", weight);
+    tft.setCursor(90, 230);
+    tft.setTextSize(3);
     tft.println(dynamicString);
   }
 
   if (weightChanged)
   {
     weightChanged = 0;
-    tft.fillRect(90, 170, 60, 30, WHITE);
-    tft.setCursor(24, 185);
-    tft.setTextSize(1);
+    tft.fillRect(40, 170, 150, 100, WHITE);
+    
     char dynamicString[20];
-    sprintf(dynamicString, "Weight: %dg", weight);
+    sprintf(dynamicString, "%dg", weight);
+    
+    if (strlen(dynamicString) == 2) {
+      tft.setCursor(90, 230);
+    } else if (strlen(dynamicString) == 3) {
+      tft.setCursor(75, 230);
+    }
+    else if (strlen(dynamicString) == 4) {
+      tft.setCursor(55, 230);
+    }
+    tft.setTextSize(3);
     tft.println(dynamicString);
   }
 }
@@ -353,10 +366,4 @@ void displayQRcode(const char *text)
       }
     }
   }
-}
-
-void sendNumberToPi(int n)
-{
-  Serial.print(n);
-  Serial.print("\n");
 }
