@@ -32,44 +32,38 @@ def generate_response(
     recognize_customer_event_flag,
 ):
     phase_prompt = [
-        {
-            "name": "IntroductionState",
-            "goal": "Welcome the user and understand their needs.",
-            "guideline": "Greet the user warmly. If their name is known, address them personally. Ask how you can assist.",
-            "phase_identification": "The user has not started discussing coffee preferences yet."
-        },
-        {
-            "name": "AvailableCoffeeState",
-            "goal": "Help the user choose a coffee based on preferences.",
-            "guideline": "Ask the user which coffee they prefer. Provide descriptions only if requested. If the user is registered, suggest coffees based on their purchase history.",
-            "phase_identification": "The user is discussing coffee options."
-        },
-        {
-            "name": "QuantityState",
-            "goal": "Determine the desired coffee quantity within the allowed range.",
-            "guideline": "Ask how many grams the user wants (20-300g). Verify the stock availability. If the quantity is invalid or exceeds stock, explain and re-prompt.",
-            "phase_identification": "The user is deciding on the coffee quantity."
-        },
-        {
-            "name": "OrderConfirmationState",
-            "goal": "Confirm the user's order and prepare for payment.",
-            "guideline": "Summarize the order, including coffee type, quantity, and total price. Ask for confirmation to proceed.",
-            "phase_identification": "The user has finalized coffee and quantity selection."
-        },
-        {
-            "name": "GoodbyeState",
-            "goal": "Conclude the interaction politely.",
-            "guideline": "Thank the user and say goodbye. Ask no more questions.",
-            "phase_identification": "The user has confirmed their order.",
-        },
-        {
+    {
+        "name": "IntroductionState",
+        "goal": "Greet the user warmly and understand their initial needs.",
+        "guideline": "Welcome the user with a friendly greeting. If their name is known, address them personally (e.g., 'Hello, [name]!'). Ask how you can assist with their coffee selection or purchase. Do not make topics, be concise"
+    },
+    {
+        "name": "AvailableCoffeeState",
+        "goal": "Provide information about the available coffee options and help the user make a choice.",
+        "guideline": "Ask the user which coffee type they prefer. If requested, provide descriptions of the available options. If the user is registered, suggest coffee options based on their purchase history. Ensure your suggestions are clear and concise. Do not make topics, be concise"
+    },
+    {
+        "name": "QuantityState",
+        "goal": "Determine how much coffee the user wants to purchase.",
+        "guideline": "Ask the user to specify the quantity of coffee they would like, within the range of 20 to 300 grams. Verify stock availability and provide feedback if the desired quantity exceeds the available stock. If necessary, suggest alternative quantities.Do not make topics, be concise"
+    },
+    {
+        "name": "OrderConfirmationState",
+        "goal": "Confirm the user's coffee selection and proceed to the payment phase.",
+        "guideline": "Summarize the user's order, including the chosen coffee type, quantity, and total price. Ask for confirmation to proceed with the order and explain the next steps, such as generating a payment QR code.Do not make topics, be concise"
+    },
+    {
+        "name": "GoodbyeState",
+        "goal": "Conclude the interaction politely after the order is finalized.",
+        "guideline": "Thank the user for their purchase and end the conversation with a friendly farewell. Avoid introducing any new questions or topics."
+    },
+    {
         "name": "Incompatible",
-        "goal": "Redirect the conversation to coffee or coffee bean topics when the user introduces unrelated subjects.",
-        "guideline": "If the user asks about something unrelated to coffee, politely redirect the conversation by highlighting coffee options or services. Example: 'I specialize in helping with coffee selections and orders. Could I interest you in exploring our coffee options?'",
-        "phase_identification": "You are in this phase when the user asks about topics unrelated to the machine's capabilities or offerings. This phase does not apply if the user is discussing coffee-related topics but shows disinterest in continuing."
+        "goal": "Politely redirect the user back to coffee-related topics if the conversation strays.",
+        "guideline": "If the user discusses unrelated topics, gently bring the conversation back to coffee options or services. Example: 'I specialize in coffee selections and purchases. Would you like to explore our coffee varieties?'"
     }
-
     ]
+
 
     stop_prompt = [
            {
@@ -95,21 +89,26 @@ def generate_response(
         while not finished_conversation:
             for state in phase_prompt:
                 prompt = f"""
-                            Verify if the current phase is {state['name']}. 
-                            Use the following criteria: Phase identification: {state["phase_identification"]}. Phase goal: {state['goal']}.
-                            Return `inPhase = True` if the goal is not yet achieved, and `inPhase = False` otherwise. 
-                            To accomplish the goal follow these guidelines: {state["guideline"]}.
-                            Additional details: Client's name: {name}. Purchase history: {json.dumps(purchase_history) if purchase_history else 'None'}. Coffee price: Per gram (calculate the total price).
-                            Be concise in responses and focus on achieving the goal efficiently.
-                        """
+            Verify if the current phase is '{state['name']}'.
+            The machine must accomplish the following goal for this phase: {state['goal']}.
+            Return `inPhase = True` if the goal has not been fully achieved, and `inPhase = False` once the goal is completed.
 
+            To accomplish the goal, follow these guidelines: {state["guideline"]}.
+            Additional details:
+            - Client's name: {name}.
+            - Purchase history: {json.dumps(purchase_history) if purchase_history else 'None'}.
+            - Coffee price is calculated per gram (provide the total price).
+
+            Generate a concise response that is clear, friendly, and suitable for text-to-speech. Focus on achieving the goal efficiently and avoid unrelated information.
+            """
+                # Chamada da função `request`
                 in_phase, response, quantity, container, total = request(
                     coffees, history, prompt, None
                 )
+
                 if in_phase:
-                    print(f"State: {state['name']}")
+                    print(f"Phase: {state['name']}")
                     print(f"Goal: {state['goal']}")
-                    print(f"Guideline: {state['guideline']}")
                     print(f"Response: {response}")
                     history.append({"role": "system", "content": response})
                     if quantity != 0:
@@ -223,11 +222,6 @@ def request(
     total = response["total"]
 
     return in_phase, message, quantity, container, total
-
-
-
-
-
 
 def has_to_stop(coffees: list, history: list, prompt: str) -> tuple:
     response = client.beta.chat.completions.parse(
