@@ -1,6 +1,0 @@
-0000000000000000000000000000000000000000 0ba36455f2eac9022d0b933df0ed7d8caca114c2 apenasetore <etoremt@gmail.com> 1732824757 +0000	WIP on main: 9814858 add: integration of camera recognition, audio and GPT fake response
-0ba36455f2eac9022d0b933df0ed7d8caca114c2 5c47c217d41f66b6c4f8b781380c4070f9704ade apenasetore <etoremt@gmail.com> 1732842135 +0000	WIP on main: e145d35 :bug: Correct rate
-5c47c217d41f66b6c4f8b781380c4070f9704ade b035d6965beaabc6f6f12f481de1bdead14795c8 apenasetore <etoremt@gmail.com> 1732992763 +0000	WIP on main: 32d2be6 Merge branch 'main' of github.com:apenasetore/coffee-on-demand
-b035d6965beaabc6f6f12f481de1bdead14795c8 2d9a84ad09ab41f09434ed93394daf5ed6149d31 apenasetore <etoremt@gmail.com> 1733354597 +0000	WIP on main: a5de60e :hammers: Motors
-2d9a84ad09ab41f09434ed93394daf5ed6149d31 4ee7f863b7e20bc91c54f0d4d1fe31fdb4b034b2 apenasetore <etoremt@gmail.com> 1733532535 +0000	WIP on main: ae9fc1a Merge branch 'main' of https://github.com/apenasetore/coffee-on-demand
-4ee7f863b7e20bc91c54f0d4d1fe31fdb4b034b2 90709321a31df091f4e3e404572a8f94bd6fbe5e apenasetore <etoremt@gmail.com> 1733593140 +0000	WIP on main: 7411c31 :refac: Prompts engeneering from chico
