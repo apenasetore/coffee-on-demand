@@ -21,11 +21,6 @@ def initialize_cam():
     video_capture = cv2.VideoCapture(CAMERA_INDEX)
 
 
-def close_cam():
-    global video_capture
-    video_capture.release()
-
-
 def process_base64_image(base64_string):
     binary_data = base64.b64decode(base64_string)
     image_array = np.frombuffer(binary_data, np.uint8)
@@ -80,7 +75,6 @@ def load_model():
 def recognize_customer(
     recognize_customer_event_flag, load_encodings_event_flag, register_customer_event_flag, customer_queue
 ):
-    initialize_cam()
     data = load_model()
     while True:
         displayed_info = False

@@ -42,12 +42,12 @@ def dispense_task(measure_coffee_queue: multiprocessing.Queue, purchase_queue: m
         last_reading = weight
         weight_reduction = False
         while weight <= requested_coffee_weight or weight_reduction: 
-            weight = int(hx.get_weight(5))
+            weight = int(hx.get_weight(3))
             if weight < 0:
                 weight = 0
 
-            if requested_coffee_weight - weight < 30:
-                print("Activating slow mode")
+            if requested_coffee_weight - weight < 5:
+                print("Activatislow_mode_event_flagng slow mode")
                 slow_mode_event_flag.set()
 
             send_to_arduino(f"UPDATE:WEIGHT:{weight}")
@@ -71,7 +71,7 @@ def dispense_task(measure_coffee_queue: multiprocessing.Queue, purchase_queue: m
         turn_on_cup_sensor.clear()
         slow_mode_event_flag.clear()
 
-        weight = int(hx.get_weight(5))
+        weight = int(hx.get_weight(3))
         print(f"Finished dispense of coffee {coffee_id} with weight : {weight}")
         send_to_arduino(f"UPDATE:WEIGHT:{weight}")
         

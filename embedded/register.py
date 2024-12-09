@@ -12,25 +12,11 @@ import time
 import numpy as np
 import embedded.coffee_api.api as coffee_api
 from embedded.arduino import send_to_arduino
+from embedded.client_recognition import video_capture
 
 load_dotenv()
 API_KEY = os.getenv("API_KEY")
 client = OpenAI(api_key=API_KEY)
-
-
-video_capture = None
-
-CAMERA_INDEX = 0
-
-def initialize_cam():
-    global video_capture
-    video_capture = cv2.VideoCapture(CAMERA_INDEX)
-
-
-def close_cam():
-    global video_capture
-    video_capture.release()
-
 
 phase_prompt = [
     {
@@ -74,7 +60,6 @@ def generate_response(
     while True:
         while not register_customer_event_flag.is_set():
             pass
-        initialize_cam()
 
         purchase = purchase_queue.get()
         weight = purchase["weight"]
@@ -113,7 +98,6 @@ def generate_response(
                         finished_conversation = True
                         send_to_arduino("UPDATE:STATE:REGISTERING")
                         pics = capture_pictures_base64(3, 2)
-                        close_cam()
                         gpt.play_audio(
                             "I've already taken your pictures, now I will send them to registration! Thank you for your purchase."
                         )

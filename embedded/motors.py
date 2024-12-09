@@ -12,7 +12,7 @@ M4_STEP_PIN = 26
 DIR_PIN = 12
 
 DELAY = 0.0005
-BIG_DELAY = 0.002
+BIG_DELAY = 0.01
 
 def setup():
     GPIO.setmode(GPIO.BCM)
