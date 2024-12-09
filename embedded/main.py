@@ -18,8 +18,6 @@ from embedded.cup_sensor import read_sensor_thread
 
 if __name__ == "__main__":
     initialize_arduino()
-    initialize_cam()
-
     rebuild_binaries_event_flag = multiprocessing.Event()
     recognize_customer_event_flag = multiprocessing.Event()
     generate_new_encodings_event_flag = multiprocessing.Event()
