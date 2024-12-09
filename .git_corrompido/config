@@ -1,0 +1,29 @@
+[core]
+	repositoryformatversion = 0
+	filemode = true
+	bare = false
+	logallrefupdates = true
+[remote "origin"]
+	url = https://github.com/apenasetore/coffee-on-demand.git
+	fetch = +refs/heads/*:refs/remotes/origin/*
+[branch "main"]
+	remote = origin
+	merge = refs/heads/main
+	vscode-merge-base = origin/main
+[branch "voice-malu-21-11"]
+	vscode-merge-base = origin/main
+	remote = origin
+	merge = refs/heads/voice-malu-21-11
+[branch "voice-chat"]
+	vscode-merge-base = origin/main
+	remote = origin
+	merge = refs/heads/voice-chat
+[pull]
+	rebase = false
+[branch "conversation-flow-etore"]
+	vscode-merge-base = origin/main
+	remote = origin
+	merge = refs/heads/conversation-flow-etore
+[user]
+	name = apenasetore
+	email = etoremt@gmail.com
