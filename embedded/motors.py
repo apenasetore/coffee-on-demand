@@ -5,14 +5,14 @@ import time
 from embedded.gpt import play_audio
 
 # PINS
-M1_STEP_PIN = 5
-M2_STEP_PIN = 6
+M1_STEP_PIN = 6
+M2_STEP_PIN = 5
 M3_STEP_PIN = 13
 M4_STEP_PIN = 26
-DIR_PIN = 12
+DIR_PIN = 5
 
-DELAY = 0.0002
-BIG_DELAY = 0.002
+DELAY = 0.001
+BIG_DELAY = 0.003
 
 def setup():
     GPIO.setmode(GPIO.BCM)
@@ -45,7 +45,6 @@ def motor_task(turn_on_motor_event_flag, removed_coffee_container, slow_mode_eve
             while not turn_on_motor_event_flag.is_set():
                 pass
 
-
             with coffee_container.get_lock():
                 print(f"Loading config of {coffee_container.value=}")
                 coffee_index = coffee_container.value
@@ -55,46 +54,33 @@ def motor_task(turn_on_motor_event_flag, removed_coffee_container, slow_mode_eve
 
                 step_pin = coffee_configs[coffee_index]
 
-
-
             if turn_on_motor_event_flag.is_set():
                 print(f"Forward {step_pin} with delay {delay}")
-                
-                for i in range(500):
-                    if slow_mode_event_flag.is_set():
-                        delay = BIG_DELAY
+                GPIO.output(DIR_PIN, GPIO.HIGH)
+                for _ in range(100):
                     if not turn_on_motor_event_flag.is_set():
                         break
                     if removed_coffee_container.is_set():
                         print("Removed coffee container")
                         break
-                    
-                    GPIO.output(DIR_PIN, GPIO.LOW)
                     GPIO.output(step_pin, GPIO.HIGH)
-                    time.sleep(delay)
+                    time.sleep(DELAY) 
                     GPIO.output(step_pin, GPIO.LOW)
-                    time.sleep(delay)
-
-            time.sleep(0.05)
+                    time.sleep(DELAY)
 
             if turn_on_motor_event_flag.is_set():
                 print("Backwards")
-                for i in range(300):
-                    if slow_mode_event_flag.is_set():
-                        delay = BIG_DELAY
+                GPIO.output(DIR_PIN, GPIO.LOW) 
+                for _ in range(50):
                     if not turn_on_motor_event_flag.is_set():
                         break
                     if removed_coffee_container.is_set():
                         print("Removed coffee container")
                         break
-
-                    GPIO.output(DIR_PIN, GPIO.HIGH)
                     GPIO.output(step_pin, GPIO.HIGH)
-                    time.sleep(delay)
+                    time.sleep(DELAY) 
                     GPIO.output(step_pin, GPIO.LOW)
-                    time.sleep(delay)
-
-            time.sleep(0.05)
+                    time.sleep(DELAY)
 
     except KeyboardInterrupt:
         print("Cleaning motors")
