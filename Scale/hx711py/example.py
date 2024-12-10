@@ -63,7 +63,7 @@ while True:
         
         # Prints the weight. Comment if you're debbuging the MSB and LSB issue.
         # val = max(0,int(hx.get_weight(5)))
-        val = (hx.get_weight(5))
+        val = (hx.get_weight(1))
         print(val)
 
         # To get weight from both channels (if you have load cells hooked up 
@@ -74,7 +74,6 @@ while True:
 
         hx.power_down()
         hx.power_up()
-        time.sleep(0.1)
 
     except (KeyboardInterrupt, SystemExit):
         cleanAndExit()

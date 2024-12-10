@@ -72,11 +72,11 @@ if __name__ == "__main__":
         ),
     ).start()
 
-    multiprocessing.Process(
-        target=recognize_customer,
-        args=(recognize_customer_event_flag, load_encodings_event_flag, register_customer_event_flag, customer_queue),
-        daemon=True,
-    ).start()
+    # multiprocessing.Process(
+    #     target=recognize_customer,
+    #     args=(recognize_customer_event_flag, load_encodings_event_flag, register_customer_event_flag, customer_queue),
+    #     daemon=True,
+    # ).start()
 
     multiprocessing.Process(
         target=capture_audio, daemon=True, args=(audio_queue, capture_audio_event_flag)
@@ -117,8 +117,8 @@ if __name__ == "__main__":
         while True:
             print("System on")
             time.sleep(3)
-            recognize_customer_event_flag.set()
-            #measure_coffee_queue.put({"container_id": 1, "weight": 60, "customer_id": -1, "coffee_id": 12})
+            #recognize_customer_event_flag.set()
+            measure_coffee_queue.put({"container_id": 1, "weight": 30, "customer_id": -1, "coffee_id": 12})
             time.sleep(100000)
     except KeyboardInterrupt:
         print("Finishing...")

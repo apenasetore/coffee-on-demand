@@ -49,17 +49,37 @@ def dispense_task(measure_coffee_queue: multiprocessing.Queue, purchase_queue: m
         weight = 0
         last_reading = weight
         weight_reduction = False
-        while weight <= requested_coffee_weight or weight_reduction: 
+        while weight <= requested_coffee_weight or weight_reduction:
+            hx.power_down()
+            hx.power_up() 
             weight = int(hx.get_weight(3))
+
+            if weight >= requested_coffee_weight:
+                print("Weight has achieved target value, stopping motors.")
+                turn_on_motor_event_flag.clear()
+
             if weight < 0:
                 weight = 0
 
-            if requested_coffee_weight - weight < 5:
-                print("Activatislow_mode_event_flagng slow mode")
-                slow_mode_event_flag.set()
-
-            send_to_arduino(f"UPDATE:WEIGHT:{weight}")
             print(f"Weight = {weight}")
+            send_to_arduino(f"UPDATE:WEIGHT:{weight}")
+
+            if requested_coffee_weight - weight <= 20:
+                print("Activating slow mode")
+                turn_on_motor_event_flag.clear()
+                time.sleep(3)
+                slow_mode_event_flag.set()
+                
+                hx.power_down()
+                hx.power_up() 
+                weight = int(hx.get_weight(3))
+
+                print(f"Weight = {weight}")
+                send_to_arduino(f"UPDATE:WEIGHT:{weight}")
+
+                if weight <= requested_coffee_weight:
+                    turn_on_motor_event_flag.set()
+
             if last_reading > weight + 2: #2 gramas de erro
                 weight_reduction = True
                 print("Weight has reduced, stopping motors.")
@@ -72,8 +92,6 @@ def dispense_task(measure_coffee_queue: multiprocessing.Queue, purchase_queue: m
 
             if not weight_reduction:
                 last_reading = weight
-            hx.power_down()
-            hx.power_up()
         
         turn_on_motor_event_flag.clear()
         turn_on_cup_sensor.clear()

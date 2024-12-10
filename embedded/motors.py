@@ -5,14 +5,14 @@ import time
 from embedded.gpt import play_audio
 
 # PINS
-M1_STEP_PIN = 6
-M2_STEP_PIN = 5
+M1_STEP_PIN = 12
+M2_STEP_PIN = 6
 M3_STEP_PIN = 13
 M4_STEP_PIN = 26
 DIR_PIN = 5
 
 DELAY = 0.001
-BIG_DELAY = 0.003
+BIG_DELAY = 0.008
 
 def setup():
     GPIO.setmode(GPIO.BCM)
@@ -39,6 +39,8 @@ def motor_task(turn_on_motor_event_flag, removed_coffee_container, slow_mode_eve
 
     coffee_configs = [M1_STEP_PIN, M2_STEP_PIN, M3_STEP_PIN, M4_STEP_PIN]
     delay = DELAY
+    positive_gain = 100
+    negative_gain = 50
 
     try:
         while True:
@@ -57,30 +59,34 @@ def motor_task(turn_on_motor_event_flag, removed_coffee_container, slow_mode_eve
             if turn_on_motor_event_flag.is_set():
                 #print(f"Forward {step_pin} with delay {delay}")
                 GPIO.output(DIR_PIN, GPIO.HIGH)
-                for _ in range(100):
+                for _ in range(positive_gain):
                     if not turn_on_motor_event_flag.is_set():
                         break
                     if removed_coffee_container.is_set():
                         print("Removed coffee container")
                         break
+                    if slow_mode_event_flag.is_set():
+                        delay = BIG_DELAY
                     GPIO.output(step_pin, GPIO.HIGH)
-                    time.sleep(DELAY) 
+                    time.sleep(delay) 
                     GPIO.output(step_pin, GPIO.LOW)
-                    time.sleep(DELAY)
+                    time.sleep(delay)
 
             if turn_on_motor_event_flag.is_set():
                 #print("Backwards")
                 GPIO.output(DIR_PIN, GPIO.LOW) 
-                for _ in range(50):
+                for _ in range(negative_gain):
                     if not turn_on_motor_event_flag.is_set():
                         break
                     if removed_coffee_container.is_set():
                         print("Removed coffee container")
                         break
+                    if slow_mode_event_flag.is_set():
+                        delay = BIG_DELAY
                     GPIO.output(step_pin, GPIO.HIGH)
-                    time.sleep(DELAY) 
+                    time.sleep(delay) 
                     GPIO.output(step_pin, GPIO.LOW)
-                    time.sleep(DELAY)
+                    time.sleep(delay)
 
     except KeyboardInterrupt:
         print("Cleaning motors")
