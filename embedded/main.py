@@ -7,7 +7,8 @@ import serial
 from embedded.arduino import initialize_arduino
 from embedded.audio import capture_audio
 
-from embedded.client_recognition import initialize_cam, recognize_customer, generate_new_encodings
+from embedded.camera import camera_thread
+from embedded.client_recognition import recognize_customer, generate_new_encodings
 
 from embedded.gpt import generate_response
 from embedded.register import register_customer
@@ -28,6 +29,7 @@ if __name__ == "__main__":
     turn_on_cup_sensor = multiprocessing.Event()
     removed_coffee_container = multiprocessing.Event()
     slow_mode_event_flag = multiprocessing.Event()
+    camera_event_flag = multiprocessing.Event()
 
     coffee_container = multiprocessing.Value("i", 3)
 
@@ -35,6 +37,7 @@ if __name__ == "__main__":
     customer_queue = multiprocessing.Queue()
     audio_queue = multiprocessing.Queue()
     purchase_queue = multiprocessing.Queue()
+    frames_queue = multiprocessing.Queue()
 
     multiprocessing.Process(
         target=generate_new_encodings,
@@ -71,12 +74,20 @@ if __name__ == "__main__":
             removed_coffee_container
         ),
     ).start()
+    multiprocessing.Process(
+        target=camera_thread,
+        daemon=True,
+        args=(
+            camera_event_flag,
+            frames_queue,
+        ),
+    ).start()
 
-    # multiprocessing.Process(
-    #     target=recognize_customer,
-    #     args=(recognize_customer_event_flag, load_encodings_event_flag, register_customer_event_flag, customer_queue),
-    #     daemon=True,
-    # ).start()
+    multiprocessing.Process(
+        target=recognize_customer,
+        args=(recognize_customer_event_flag, load_encodings_event_flag, register_customer_event_flag, customer_queue, camera_event_flag, frames_queue),
+        daemon=True,
+    ).start()
 
     multiprocessing.Process(
         target=capture_audio, daemon=True, args=(audio_queue, capture_audio_event_flag)
@@ -104,6 +115,8 @@ if __name__ == "__main__":
             register_customer_event_flag,
             recognize_customer_event_flag,
             generate_new_encodings_event_flag,
+            camera_event_flag,
+            frames_queue
         ),
     ).start()
 

@@ -12,19 +12,6 @@ from embedded.coffee_api.api import get_customers
 from embedded.coffee_api.http_requests import get
 from embedded.arduino import send_to_arduino
 
-video_capture = None
-
-CAMERA_INDEX = 0
-
-def initialize_cam():
-    global video_capture
-    video_capture = cv2.VideoCapture(CAMERA_INDEX)
-
-
-def close_cam():
-    global video_capture
-    video_capture.release()
-
 
 def process_base64_image(base64_string):
     binary_data = base64.b64decode(base64_string)
@@ -78,9 +65,9 @@ def load_model():
 
 
 def recognize_customer(
-    recognize_customer_event_flag, load_encodings_event_flag, register_customer_event_flag, customer_queue
+    recognize_customer_event_flag, load_encodings_event_flag, register_customer_event_flag, customer_queue, camera_event_flag,
+    frames_queue
 ):
-    initialize_cam()
     data = load_model()
     while True:
         displayed_info = False
@@ -95,11 +82,8 @@ def recognize_customer(
                 data = load_model()
                 load_encodings_event_flag.clear()
 
-            ret, frame = video_capture.read()
-            if not ret:
-                print("Frame error")
-                break
-            frame = cv2.resize(frame, (0, 0), fx=0.5, fy=0.5)
+            camera_event_flag.set()
+            frame = frames_queue.get()
 
             print("Looking for someone")
 

@@ -18,20 +18,6 @@ API_KEY = os.getenv("API_KEY")
 client = OpenAI(api_key=API_KEY)
 
 
-video_capture = None
-
-CAMERA_INDEX = 0
-
-def initialize_cam():
-    global video_capture
-    video_capture = cv2.VideoCapture(CAMERA_INDEX)
-
-
-def close_cam():
-    global video_capture
-    video_capture.release()
-
-
 phase_prompt = [
     {
         "name": "AskToRegisterState",
@@ -69,12 +55,13 @@ def generate_response(
     register_customer_event_flag,
     recognize_customer_event_flag,
     generate_new_encodings_event_flag,
+    camera_event_flag,
+    frames_queue
 ):
     global phase_prompt, stop_prompt
     while True:
         while not register_customer_event_flag.is_set():
             pass
-        initialize_cam()
 
         purchase = purchase_queue.get()
         weight = purchase["weight"]
@@ -112,8 +99,7 @@ def generate_response(
                         gpt.play_audio(response)
                         finished_conversation = True
                         send_to_arduino("UPDATE:STATE:REGISTERING")
-                        pics = capture_pictures_base64(3, 2)
-                        close_cam()
+                        pics = capture_pictures_base64(3, 2, camera_event_flag, frames_queue)
                         gpt.play_audio(
                             "I've already taken your pictures, now I will send them to registration! Thank you for your purchase."
                         )
@@ -230,19 +216,14 @@ def has_to_stop(history: list, phase_prompt: str) -> tuple:
     return stop, message
 
 
-def capture_pictures_base64(picture_count, delay):
-    global video_capture
-    time.sleep(0.3)
+def capture_pictures_base64(picture_count, delay, camera_event_flag, frames_queue):
     base64_images = []
 
     try:
         for i in range(picture_count):
             # Capture a frame
-            ret, frame = video_capture.read()
-            if not ret:
-                print("Failed to capture frame.")
-                break
-
+            camera_event_flag.set()
+            frame = frames_queue.get()
             _, buffer = cv2.imencode(".jpg", frame)
 
             base64_image = base64.b64encode(buffer).decode("utf-8")
@@ -267,6 +248,8 @@ def register_customer(
     register_customer_event_flag,
     recognize_customer_event_flag,
     generate_new_encodings_event_flag,
+    camera_event_flag,
+    frames_queue
 ):
     generate_response(
         audio_queue,
@@ -275,4 +258,6 @@ def register_customer(
         register_customer_event_flag,
         recognize_customer_event_flag,
         generate_new_encodings_event_flag,
+        camera_event_flag,
+        frames_queue
     )
