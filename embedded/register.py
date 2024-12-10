@@ -231,7 +231,7 @@ def has_to_stop(history: list, phase_prompt: str) -> tuple:
 
 
 def capture_pictures_base64(picture_count, delay):
-
+    global video_capture
     time.sleep(0.3)
     base64_images = []
 

@@ -11,8 +11,8 @@ M3_STEP_PIN = 13
 M4_STEP_PIN = 26
 DIR_PIN = 12
 
-DELAY = 0.0005
-BIG_DELAY = 0.01
+DELAY = 0.0002
+BIG_DELAY = 0.002
 
 def setup():
     GPIO.setmode(GPIO.BCM)
@@ -59,6 +59,7 @@ def motor_task(turn_on_motor_event_flag, removed_coffee_container, slow_mode_eve
 
             if turn_on_motor_event_flag.is_set():
                 print(f"Forward {step_pin} with delay {delay}")
+                
                 for i in range(500):
                     if slow_mode_event_flag.is_set():
                         delay = BIG_DELAY
@@ -67,6 +68,7 @@ def motor_task(turn_on_motor_event_flag, removed_coffee_container, slow_mode_eve
                     if removed_coffee_container.is_set():
                         print("Removed coffee container")
                         break
+                    
                     GPIO.output(DIR_PIN, GPIO.LOW)
                     GPIO.output(step_pin, GPIO.HIGH)
                     time.sleep(delay)
@@ -93,6 +95,7 @@ def motor_task(turn_on_motor_event_flag, removed_coffee_container, slow_mode_eve
                     time.sleep(delay)
 
             time.sleep(0.05)
+
     except KeyboardInterrupt:
         print("Cleaning motors")
         clean_motors()
