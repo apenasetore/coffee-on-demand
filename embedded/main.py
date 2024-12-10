@@ -17,7 +17,7 @@ from embedded.cup_sensor import read_sensor_thread
 
 
 if __name__ == "__main__":
-    #initialize_arduino()
+    initialize_arduino()
     rebuild_binaries_event_flag = multiprocessing.Event()
     recognize_customer_event_flag = multiprocessing.Event()
     generate_new_encodings_event_flag = multiprocessing.Event()
@@ -116,8 +116,7 @@ if __name__ == "__main__":
         while True:
             print("System on")
             time.sleep(3)
-            turn_on_motor_event_flag.set()
-            # recognize_customer_event_flag.set()
+            recognize_customer_event_flag.set()
             #measure_coffee_queue.put({"container_id": 1, "weight": 60, "customer_id": -1, "coffee_id": 12})
             time.sleep(100000)
     except KeyboardInterrupt:
