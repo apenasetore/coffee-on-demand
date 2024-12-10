@@ -2,6 +2,7 @@ import queue
 import threading
 import time
 from embedded.coffee_api.api import add_purchase
+from embedded.cup_sensor import read_sensor, setup
 from embedded.gpt import play_audio
 from embedded.hx711 import HX711
 import multiprocessing
@@ -32,6 +33,10 @@ def dispense_task(measure_coffee_queue: multiprocessing.Queue, purchase_queue: m
             print(f"Updated container to dispense to {container_id}")
             coffee_container.value = container_id
         
+        while read_sensor():
+            play_audio("Please put a coffee container in place!")
+            time.sleep(3)
+
         send_to_arduino("UPDATE:WEIGHT:0")
         send_to_arduino("UPDATE:STATE:DISPENSING")
         requested_coffee_weight = measure_coffee_request["weight"]
@@ -71,6 +76,9 @@ def dispense_task(measure_coffee_queue: multiprocessing.Queue, purchase_queue: m
         turn_on_cup_sensor.clear()
         slow_mode_event_flag.clear()
 
+        time.sleep(2)
+        hx.power_down()
+        hx.power_up()
         weight = int(hx.get_weight(3))
         print(f"Finished dispense of coffee {coffee_id} with weight : {weight}")
         send_to_arduino(f"UPDATE:WEIGHT:{weight}")
@@ -81,13 +89,20 @@ def dispense_task(measure_coffee_queue: multiprocessing.Queue, purchase_queue: m
             purchase_queue.put(
                 {"weight": weight, "coffee_id": coffee_id}
             )
-            register_customer_event_flag.set()
         else:
             play_audio("I've finished dispensing. Thank you!")
             print("Adding purchase to the customer")
             add_purchase(customer_id, weight, coffee_id)
-            recognize_customer_event_flag.set()
-        
+
+        while weight > -2: # 2 gramas de erro
+            play_audio("Please remove your coffee!")
+            time.sleep(3)
+            hx.power_down()
+            hx.power_up()
+            weight = int(hx.get_weight(3))
+
+        recognize_customer_event_flag.set()
+
 
 
         
