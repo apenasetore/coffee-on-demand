@@ -39,6 +39,11 @@ def dispense_task(measure_coffee_queue: multiprocessing.Queue, purchase_queue: m
             play_audio("Please put a coffee container in place!")
             time.sleep(3)
 
+        referenceUnit =  401339.77777777775/211
+        hx.set_reference_unit(referenceUnit)
+        hx.reset()
+        hx.tare()
+
         print("Staring to dispense")
 
         send_to_arduino("UPDATE:WEIGHT:0")
@@ -65,11 +70,9 @@ def dispense_task(measure_coffee_queue: multiprocessing.Queue, purchase_queue: m
             send_to_arduino(f"UPDATE:WEIGHT:{weight}")
 
             if requested_coffee_weight - weight <= 20:
-                print("Activating slow mode")
                 turn_on_motor_event_flag.clear()
-                time.sleep(3)
-                slow_mode_event_flag.set()
-                
+                print("Activating slow mode")
+
                 hx.power_down()
                 hx.power_up() 
                 weight = int(hx.get_weight(3))
@@ -77,8 +80,21 @@ def dispense_task(measure_coffee_queue: multiprocessing.Queue, purchase_queue: m
                 print(f"Weight = {weight}")
                 send_to_arduino(f"UPDATE:WEIGHT:{weight}")
 
-                if weight <= requested_coffee_weight:
+                time.sleep(1.5)
+
+                hx.power_down()
+                hx.power_up() 
+                weight = int(hx.get_weight(3))
+
+                print(f"Weight = {weight}")
+                send_to_arduino(f"UPDATE:WEIGHT:{weight}")
+
+                slow_mode_event_flag.set()
+
+                if weight < requested_coffee_weight:
                     turn_on_motor_event_flag.set()
+                else:
+                    break
 
             if last_reading > weight + 2: #2 gramas de erro
                 weight_reduction = True
@@ -100,20 +116,11 @@ def dispense_task(measure_coffee_queue: multiprocessing.Queue, purchase_queue: m
         time.sleep(2)
         hx.power_down()
         hx.power_up()
-        weight = int(hx.get_weight(3))
-        print(f"Finished dispense of coffee {coffee_id} with weight : {weight}")
-        send_to_arduino(f"UPDATE:WEIGHT:{weight}")
+        final_weight = int(hx.get_weight(3))
+        print(f"Finished dispense of coffee {coffee_id} with weight : {final_weight}")
+        send_to_arduino(f"UPDATE:WEIGHT:{final_weight}")
         
         time.sleep(5)
-
-        if customer_id == -1:
-            purchase_queue.put(
-                {"weight": weight, "coffee_id": coffee_id}
-            )
-        else:
-            play_audio("I've finished dispensing. Thank you!")
-            print("Adding purchase to the customer")
-            add_purchase(customer_id, weight, coffee_id)
 
         while weight > -2: # 2 gramas de erro
             play_audio("Please remove your coffee!")
@@ -122,7 +129,15 @@ def dispense_task(measure_coffee_queue: multiprocessing.Queue, purchase_queue: m
             hx.power_up()
             weight = int(hx.get_weight(3))
 
-        recognize_customer_event_flag.set()
+        if customer_id == -1:
+            purchase_queue.put(
+                {"weight": final_weight, "coffee_id": coffee_id}
+            )
+        else:
+            play_audio("I've finished dispensing. Thank you!")
+            print("Adding purchase to the customer")
+            add_purchase(customer_id, final_weight, coffee_id)
+            recognize_customer_event_flag.set()
 
 
 

@@ -23,13 +23,13 @@ phase_prompt = [
         "name": "AskToRegisterState",
         "phase_identification": "Customer has given no information about his first and last name yet.",
         "goal": "Figure out if the user wants to register as a customer to this service. If he does, get his firstname and lastname and return them in firstname and lastname vars, else return empty string",
-        "guideline": "Say the customer's order has finished being dispensed. Then, ask if the customer wants to register as a customer to this service.",
+        "guideline": "Say the customer's order has finished being dispensed. Then, ask if the customer wants to register as a customer to this service. Ask if the costumer wants to go BC",
     },
     {
         "name": "TakePictureState",
         "phase_identification": "Customer has already given his first and last name.",
         "goal": "Get the user to stand in front of the camera to take pictures for facial recognition. If you have the customer name, you are in this state.",
-        "guideline": "Ask the customer to stand in front of the camera with a clear view of their face to take pictures. Start a 3 second countdown to take the picture.",
+        "guideline": "Ask the customer to stand in front of the camera with a clear view of their face to take pictures. Start a 3 second countdown to take the picture. Do no use emojis",
     },
     {
         "name": "Incompatible",
@@ -60,9 +60,7 @@ def generate_response(
 ):
     global phase_prompt, stop_prompt
     while True:
-        while not register_customer_event_flag.is_set():
-            pass
-
+        
         purchase = purchase_queue.get()
         weight = purchase["weight"]
         coffee_id = purchase["coffee_id"]

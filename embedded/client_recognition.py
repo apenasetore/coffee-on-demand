@@ -5,6 +5,7 @@ import cv2
 import face_recognition
 import os
 import pickle
+import embedded.gpt as gpt
 
 import numpy as np
 
@@ -30,6 +31,8 @@ def generate_new_encodings(
 
     customers = get_customers()
 
+    gpt.play_audio("I'm taking a time to generate my new data for recognition of the last customer. One minute please.")
+
     known_face_encodings = []
     known_face_names = []
     for customer_info in customers:
@@ -51,6 +54,8 @@ def generate_new_encodings(
     data = {"encodings": known_face_encodings, "names": known_face_names}
     with open("embedded/encodings.pkl", "wb") as f:
         pickle.dump(data, f)
+
+    gpt.play_audio("Okay, all set, let's go.")
 
     load_encodings_event_flag.set()
     recognize_customer_event_flag.set()

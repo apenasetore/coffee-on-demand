@@ -237,7 +237,7 @@ def has_to_stop(coffees: list, history: list, prompt: str) -> tuple:
             {
                 "role": "system",
                 "content": f"""You are a coffee vending machine with these coffee grains available: {json.dumps(coffees)}. 
-                    You provide only coffee grains and can register users with their consent.  
+                    You provide only coffee grains.  
                     {prompt}.
                     """,
             }

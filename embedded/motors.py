@@ -4,12 +4,11 @@ import time
 
 from embedded.gpt import play_audio
 
-# PINS
-M1_STEP_PIN = 12
+DIR_PIN = 12  # Pino para definir a direção
+M1_STEP_PIN = 5  # Pino para enviar os pulsos de passo
 M2_STEP_PIN = 6
 M3_STEP_PIN = 13
 M4_STEP_PIN = 26
-DIR_PIN = 5
 
 DELAY = 0.001
 BIG_DELAY = 0.008
