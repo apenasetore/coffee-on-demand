@@ -55,7 +55,7 @@ def motor_task(turn_on_motor_event_flag, removed_coffee_container, slow_mode_eve
                 step_pin = coffee_configs[coffee_index]
 
             if turn_on_motor_event_flag.is_set():
-                print(f"Forward {step_pin} with delay {delay}")
+                #print(f"Forward {step_pin} with delay {delay}")
                 GPIO.output(DIR_PIN, GPIO.HIGH)
                 for _ in range(100):
                     if not turn_on_motor_event_flag.is_set():
@@ -69,7 +69,7 @@ def motor_task(turn_on_motor_event_flag, removed_coffee_container, slow_mode_eve
                     time.sleep(DELAY)
 
             if turn_on_motor_event_flag.is_set():
-                print("Backwards")
+                #print("Backwards")
                 GPIO.output(DIR_PIN, GPIO.LOW) 
                 for _ in range(50):
                     if not turn_on_motor_event_flag.is_set():

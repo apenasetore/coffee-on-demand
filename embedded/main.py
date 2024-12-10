@@ -67,7 +67,8 @@ if __name__ == "__main__":
             turn_on_motor_event_flag,
             slow_mode_event_flag,
             register_customer_event_flag,
-            turn_on_cup_sensor
+            turn_on_cup_sensor,
+            removed_coffee_container
         ),
     ).start()
 

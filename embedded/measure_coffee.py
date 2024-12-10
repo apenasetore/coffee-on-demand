@@ -12,7 +12,7 @@ DT_PIN = 27
 SCK_PIN = 17
 
 
-def dispense_task(measure_coffee_queue: multiprocessing.Queue, purchase_queue: multiprocessing.Queue, recognize_customer_event_flag, coffee_container, turn_on_motor_event_flag, slow_mode_event_flag, register_customer_event_flag, turn_on_cup_sensor):
+def dispense_task(measure_coffee_queue: multiprocessing.Queue, purchase_queue: multiprocessing.Queue, recognize_customer_event_flag, coffee_container, turn_on_motor_event_flag, slow_mode_event_flag, register_customer_event_flag, turn_on_cup_sensor, removed_coffee_container):
     hx = HX711(DT_PIN, SCK_PIN)
     print("Setting up load cell")
     referenceUnit =  401339.77777777775/211
@@ -33,15 +33,18 @@ def dispense_task(measure_coffee_queue: multiprocessing.Queue, purchase_queue: m
             print(f"Updated container to dispense to {container_id}")
             coffee_container.value = container_id
         
-        while read_sensor():
+        turn_on_cup_sensor.set()
+        time.sleep(1)
+        while removed_coffee_container.is_set():
             play_audio("Please put a coffee container in place!")
             time.sleep(3)
+
+        print("Staring to dispense")
 
         send_to_arduino("UPDATE:WEIGHT:0")
         send_to_arduino("UPDATE:STATE:DISPENSING")
         requested_coffee_weight = measure_coffee_request["weight"]
         turn_on_motor_event_flag.set()
-        turn_on_cup_sensor.set()
 
         weight = 0
         last_reading = weight
