@@ -32,6 +32,7 @@ def generate_new_encodings(
     customers = get_customers()
 
     gpt.play_audio("I'm taking a time to generate my new data for recognition of the last customer. One minute please.")
+    send_to_arduino("UPDATE:STATE:PROCESSING")
 
     known_face_encodings = []
     known_face_names = []
@@ -116,8 +117,9 @@ def recognize_customer(
 
             print(face_detection_count)
             for customer_id, count in face_detection_count.items():
-                if count >= 4:
+                if count >= 1:
                     customer_queue.put(customer_id)
+                    gpt.play_audio("Oh, hi there!")
                     #register_customer_event_flag.set()
                     recognize_customer_event_flag.clear()
 

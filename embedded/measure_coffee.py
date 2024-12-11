@@ -54,7 +54,7 @@ def dispense_task(measure_coffee_queue: multiprocessing.Queue, purchase_queue: m
         weight = 0
         last_reading = weight
         weight_reduction = False
-        while weight <= requested_coffee_weight or weight_reduction:
+        while weight < requested_coffee_weight or weight_reduction:
             hx.power_down()
             hx.power_up() 
             weight = int(hx.get_weight(3))
@@ -66,43 +66,52 @@ def dispense_task(measure_coffee_queue: multiprocessing.Queue, purchase_queue: m
             if weight < 0:
                 weight = 0
 
-            print(f"Weight = {weight}")
+            print(f"Weight = {weight} and last valid weight = {last_reading}")
             send_to_arduino(f"UPDATE:WEIGHT:{weight}")
 
-            if requested_coffee_weight - weight <= 20:
+            if requested_coffee_weight - weight <= 18:
                 turn_on_motor_event_flag.clear()
                 print("Activating slow mode")
 
-                hx.power_down()
-                hx.power_up() 
-                weight = int(hx.get_weight(3))
+                while weight < requested_coffee_weight or weight_reduction:
 
-                print(f"Weight = {weight}")
-                send_to_arduino(f"UPDATE:WEIGHT:{weight}")
+                    if last_reading > weight + 2:
+                        weight_reduction = True
+                        print("Weight has reduced, stopping motors.")
+                        turn_on_motor_event_flag.clear()
+                        play_audio("We have detected a weight reduction, please put back the coffee container.")
+                    elif weight_reduction:
+                        play_audio("Resuming dispensing.")
+                        weight_reduction = False
+                        turn_on_motor_event_flag.set()
 
-                time.sleep(1.5)
+                    if not weight_reduction:
+                        last_reading = weight
 
-                hx.power_down()
-                hx.power_up() 
-                weight = int(hx.get_weight(3))
+                    print(f"Weight = {weight}")
+                    send_to_arduino(f"UPDATE:WEIGHT:{weight}")
 
-                print(f"Weight = {weight}")
-                send_to_arduino(f"UPDATE:WEIGHT:{weight}")
+                    time.sleep(3)
 
-                slow_mode_event_flag.set()
-
-                if weight < requested_coffee_weight:
                     turn_on_motor_event_flag.set()
-                else:
-                    break
+                    time.sleep(0.12)
+                    turn_on_motor_event_flag.clear()
 
-            if last_reading > weight + 2: #2 gramas de erro
+                    hx.power_down()
+                    hx.power_up() 
+                    weight = int(hx.get_weight(3))
+
+                print(f"Weight = {weight}")
+                send_to_arduino(f"UPDATE:WEIGHT:{weight}")
+
+            if last_reading > weight + 2:
                 weight_reduction = True
                 print("Weight has reduced, stopping motors.")
                 turn_on_motor_event_flag.clear()
                 play_audio("We have detected a weight reduction, please put back the coffee container.")
             elif weight_reduction:
                 play_audio("Resuming dispensing.")
+                send_to_arduino(f"UPDATE:STATE:DISPENSING")
                 weight_reduction = False
                 turn_on_motor_event_flag.set()
 
@@ -113,14 +122,11 @@ def dispense_task(measure_coffee_queue: multiprocessing.Queue, purchase_queue: m
         turn_on_cup_sensor.clear()
         slow_mode_event_flag.clear()
 
-        time.sleep(2)
-        hx.power_down()
-        hx.power_up()
-        final_weight = int(hx.get_weight(3))
+        final_weight = weight
         print(f"Finished dispense of coffee {coffee_id} with weight : {final_weight}")
-        send_to_arduino(f"UPDATE:WEIGHT:{final_weight}")
+        #send_to_arduino(f"UPDATE:WEIGHT:{final_weight}")
         
-        time.sleep(5)
+        time.sleep(3)
 
         while weight > -2: # 2 gramas de erro
             play_audio("Please remove your coffee!")

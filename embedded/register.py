@@ -31,12 +31,6 @@ phase_prompt = [
         "goal": "Get the user to stand in front of the camera to take pictures for facial recognition. If you have the customer name, you are in this state.",
         "guideline": "Ask the customer to stand in front of the camera with a clear view of their face to take pictures. Start a 3 second countdown to take the picture. Do no use emojis",
     },
-    {
-        "name": "Incompatible",
-        "phase_identification": "Customer has said some something that is not about his registration process",
-        "goal": "Determine if the user is asking something that is not about his registration process.",
-        "guideline": "Say that the machine does not provide what the user wants, the reason why and to try again later.",
-    },
 ]
 stop_prompt = [
     {
@@ -145,6 +139,7 @@ def generate_response(
                     print(f"Message: {response}")
                     history.append({"role": "system", "content": response})
                     gpt.play_audio(response)
+                    print(f"{coffee_id=} {weight=}")
                     coffee_api.update_coffee_quantity(coffee_id, weight)
                     register_customer_event_flag.clear()
                     recognize_customer_event_flag.set()

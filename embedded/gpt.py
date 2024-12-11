@@ -169,12 +169,13 @@ def generate_response(
             try:
                 capture_audio_event_flag.set()
                 send_to_arduino("UPDATE:STATE:LISTENING")
-                audio_buffer = audio_queue.get(timeout=20)
+                audio_buffer = audio_queue.get(timeout=60)
                 print("Got audio from queue")
                 send_to_arduino("UPDATE:STATE:PROCESSING")
             except Exception as e:
                 print("No response given by the customer, restarting flow")
                 capture_audio_event_flag.clear()
+                play_audio("Oh, I think you are not here anymore. Let's move on.")
                 recognize_customer_event_flag.set()
                 break
 
