@@ -37,38 +37,37 @@ def generate_response(
     recognize_customer_event_flag,
 ):
     phase_prompt = [
-    {
-        "name": "IntroductionState",
-        "goal": "Greet the user warmly and understand their initial needs.",
-        "guideline": "Welcome the user with a friendly greeting. If their name is known, address them personally (e.g., 'Hello, [name]!'). Ask how you can assist with their coffee selection or purchase. Do not make topics, be concise"
-    },
-    {
-        "name": "AvailableCoffeeState",
-        "goal": "Provide information about the available coffee options and help the user make a choice.",
-        "guideline": "Ask the user which coffee type they prefer. If requested, provide descriptions of the available options. If the user is registered, suggest coffee options based on their purchase history. Ensure your suggestions are clear and concise. Do not make topics, be concise"
-    },
-    {
-        "name": "QuantityState",
-        "goal": "Determine how much coffee the user wants to purchase.",
-        "guideline": "Ask the user to specify the quantity of coffee they would like, within the range of 20 to 300 grams. Verify stock availability and provide feedback if the desired quantity exceeds the available stock. If necessary, suggest alternative quantities.Do not make topics, be concise"
-    },
-    {
-        "name": "OrderConfirmationState",
-        "goal": "Confirm the user's coffee selection and proceed to the payment phase.",
-        "guideline": "Summarize the user's order, including the chosen coffee type, quantity, and total price. Ask for confirmation to proceed with the order and explain the next steps, such as generating a payment QR code.Do not make topics, be concise"
-    },
-    {
-        "name": "GoodbyeState",
-        "goal": "Conclude the interaction politely after the order is finalized.",
-        "guideline": "Thank the user for their purchase and end the conversation with a friendly farewell. Avoid introducing any new questions or topics."
-    },
-    {
-        "name": "Incompatible",
-        "goal": "Politely redirect the user back to coffee-related topics if the conversation strays.",
-        "guideline": "If the user discusses unrelated topics, gently bring the conversation back to coffee options or services. Example: 'I specialize in coffee selections and purchases. Would you like to explore our coffee varieties?'"
-    }
+        {
+            "name": "IntroductionState",
+            "goal": "Greet the user warmly and understand their initial needs.",
+            "guideline": "Welcome the user with a friendly greeting. If their name is known, address them personally (e.g., 'Hello, [name]!'). Ask how you can assist with their coffee selection or purchase. Do not make topics, be concise",
+        },
+        {
+            "name": "AvailableCoffeeState",
+            "goal": "Provide information about the available coffee options and help the user make a choice.",
+            "guideline": "Ask the user which coffee type they prefer. If requested, provide descriptions of the available options. If the user is registered, suggest coffee options based on their purchase history. Ensure your suggestions are clear and concise. Do not make topics, be concise",
+        },
+        {
+            "name": "QuantityState",
+            "goal": "Determine how much coffee the user wants to purchase.",
+            "guideline": "Ask the user to specify the quantity of coffee they would like, within the range of 20 to 300 grams. Verify stock availability and provide feedback if the desired quantity exceeds the available stock. If necessary, suggest alternative quantities.Do not make topics, be concise",
+        },
+        {
+            "name": "OrderConfirmationState",
+            "goal": "Confirm the user's coffee selection and proceed to the payment phase.",
+            "guideline": "Summarize the user's order, including the chosen coffee type, quantity, and total price. Ask for confirmation to proceed with the order and explain the next steps, such as generating a payment QR code.Do not make topics, be concise",
+        },
+        {
+            "name": "GoodbyeState",
+            "goal": "Conclude the interaction politely after the order is finalized.",
+            "guideline": "Thank the user for their purchase and end the conversation with a friendly farewell. Avoid introducing any new questions or topics.",
+        },
+        {
+            "name": "Incompatible",
+            "goal": "Politely redirect the user back to coffee-related topics if the conversation strays.",
+            "guideline": "If the user discusses unrelated topics, gently bring the conversation back to coffee options or services. Example: 'I specialize in coffee selections and purchases. Would you like to explore our coffee varieties?'",
+        },
     ]
-
 
     stop_prompt = [
         {
@@ -231,6 +230,7 @@ def request(
 
     return in_phase, message, quantity, container, total
 
+
 def has_to_stop(coffees: list, history: list, prompt: str) -> tuple:
     response = client.beta.chat.completions.parse(
         model="gpt-4o",
@@ -280,14 +280,15 @@ def play_audio(text: str):
     print("Text to speech...")
     audio = gTTS(text=text, lang="en", slow=False)
     print("Completed transformation")
-    pygame.mixer.init()
-    with tempfile.NamedTemporaryFile(delete=True, suffix=".mp3") as temp_audio:
-        audio.save(temp_audio.name)
+    audio_bytes = io.BytesIO()
+    audio.write_to_fp(audio_bytes)
+    audio_bytes.seek(0)
 
-        pygame.mixer.music.load(temp_audio.name)
-        pygame.mixer.music.play()
-        send_to_arduino("UPDATE:STATE:TALKING")
-        while pygame.mixer.music.get_busy():
-            time.sleep(0.3)
+    pygame.mixer.init()
+    pygame.mixer.music.load(audio_bytes, "mp3")
+    pygame.mixer.music.play()
+    send_to_arduino("UPDATE:STATE:TALKING")
+    while pygame.mixer.music.get_busy():
+        time.sleep(0.3)
 
     print("Finished playing sound")
