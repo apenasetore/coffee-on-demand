@@ -270,7 +270,7 @@ async def request(
 
 
 async def has_to_stop(
-    stop_prompt: str, coffees: list, history: list, prompt: str
+    stop_prompt: dict[str, str], coffees: list, history: list, prompt: str
 ) -> tuple:
     response = await client.beta.chat.completions.parse(
         model="gpt-4o",

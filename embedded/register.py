@@ -1,10 +1,11 @@
+import asyncio
 import json
 import multiprocessing
 from embedded.gpt_dtos.dto import RegisterResponseFormat, ResponseStopFormat
 import embedded.gpt as gpt
 import os
 from dotenv import load_dotenv
-from openai import OpenAI
+import openai
 
 import base64
 import cv2
@@ -15,7 +16,7 @@ from embedded.arduino import send_to_arduino
 
 load_dotenv()
 API_KEY = os.getenv("API_KEY")
-client = OpenAI(api_key=API_KEY)
+client = openai.AsyncOpenAI(api_key=API_KEY)
 
 
 phase_prompt = [
@@ -42,7 +43,7 @@ stop_prompt = [
 ]
 
 
-def generate_response(
+async def generate_response(
     audio_queue: multiprocessing.Queue,
     purchase_queue: multiprocessing.Queue,
     capture_audio_event_flag,
@@ -50,11 +51,11 @@ def generate_response(
     recognize_customer_event_flag,
     generate_new_encodings_event_flag,
     camera_event_flag,
-    frames_queue
+    frames_queue,
 ):
     global phase_prompt, stop_prompt
     while True:
-        
+
         purchase = purchase_queue.get()
         weight = purchase["weight"]
         coffee_id = purchase["coffee_id"]
@@ -64,6 +65,8 @@ def generate_response(
         finished_conversation = False
         history = []
         while not finished_conversation:
+
+            state_check_tasks = []
             for state in phase_prompt:
                 prompt = f"""Verify if the current phase is {state['name']}.
                         To indentify if you are in this state use this information: {state["phase_identification"]}.
@@ -73,7 +76,10 @@ def generate_response(
                         Call the customer coffee enthusiast.
                         ."""
 
-                in_phase, response, firstname, lastname = request(history, prompt)
+                state_check_tasks.append(request(state, history, prompt))
+
+            results = await asyncio.gather(*state_check_tasks)
+            for state, in_phase, response, firstname, lastname in results:
                 if in_phase:
                     print(f"State: {state['name']}")
                     print(f"Goal: {state['goal']}")
@@ -91,7 +97,9 @@ def generate_response(
                         gpt.play_audio(response)
                         finished_conversation = True
                         send_to_arduino("UPDATE:STATE:REGISTERING")
-                        pics = capture_pictures_base64(3, 2, camera_event_flag, frames_queue)
+                        pics = capture_pictures_base64(
+                            3, 2, camera_event_flag, frames_queue
+                        )
                         gpt.play_audio(
                             "I've already taken your pictures, now I will send them to registration! Thank you for your purchase."
                         )
@@ -125,13 +133,16 @@ def generate_response(
                 finished_conversation = True
                 break
 
-            user_response = gpt.transcript(audio_buffer)
+            user_response = await gpt.transcript(audio_buffer)
             history.append({"role": "user", "content": user_response})
 
+            has_to_stop_tasks = []
             for sp in stop_prompt:
                 prompt = f"Verify if the current reason to stop is {sp['name']}. To determine if it is, figure out {sp['goal']}. Return true in stop in case the conversation must stop. To determine it, you must {sp['guideline']}., only generate a message if stop is True"
-                stop, response = has_to_stop(history, prompt)
+                has_to_stop_tasks.append(has_to_stop(sp, history, prompt))
 
+            await asyncio.gather(*has_to_stop_tasks)
+            for sp, stop, response in results:
                 if stop:
                     print(f"State: {sp['name']}")
                     print(f"Goal: {sp['goal']}")
@@ -156,8 +167,8 @@ def register_new_customer(firstname: str, lastname: str, pics: list):
     return new_customer["customer"][0]["id"]
 
 
-def request(history: list, phase_prompt: str) -> tuple:
-    response = client.beta.chat.completions.parse(
+async def request(state: dict[str, str], history: list, phase_prompt: str) -> tuple:
+    response = await client.beta.chat.completions.parse(
         model="gpt-4o",
         messages=[
             {
@@ -181,11 +192,13 @@ def request(history: list, phase_prompt: str) -> tuple:
     firstname = response["firstname"]
     lastname = response["lastname"]
 
-    return in_phase, message, firstname, lastname
+    return state, in_phase, message, firstname, lastname
 
 
-def has_to_stop(history: list, phase_prompt: str) -> tuple:
-    response = client.beta.chat.completions.parse(
+async def has_to_stop(
+    stop_prompt: dict[str, str], history: list, phase_prompt: str
+) -> tuple:
+    response = await client.beta.chat.completions.parse(
         model="gpt-4o",
         messages=[
             {
@@ -206,7 +219,7 @@ def has_to_stop(history: list, phase_prompt: str) -> tuple:
     stop = response["stop"]
     message = response["message"]
 
-    return stop, message
+    return stop_prompt, stop, message
 
 
 def capture_pictures_base64(picture_count, delay, camera_event_flag, frames_queue):
@@ -242,15 +255,17 @@ def register_customer(
     recognize_customer_event_flag,
     generate_new_encodings_event_flag,
     camera_event_flag,
-    frames_queue
+    frames_queue,
 ):
-    generate_response(
-        audio_queue,
-        purchase_queue,
-        capture_audio_event_flag,
-        register_customer_event_flag,
-        recognize_customer_event_flag,
-        generate_new_encodings_event_flag,
-        camera_event_flag,
-        frames_queue
+    asyncio.run(
+        generate_response(
+            audio_queue,
+            purchase_queue,
+            capture_audio_event_flag,
+            register_customer_event_flag,
+            recognize_customer_event_flag,
+            generate_new_encodings_event_flag,
+            camera_event_flag,
+            frames_queue,
+        )
     )
