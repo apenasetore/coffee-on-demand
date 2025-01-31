@@ -1,3 +1,4 @@
+import asyncio
 import io
 import json
 import multiprocessing
@@ -12,7 +13,7 @@ import wave
 from embedded.gpt_dtos.dto import ResponseFormat, ResponseStopFormat
 import pygame
 from pydub import AudioSegment
-from openai import OpenAI
+import openai
 
 
 from embedded.audio import CHANNELS, RATE
@@ -26,10 +27,28 @@ from embedded.arduino import send_to_arduino
 
 load_dotenv()
 API_KEY = os.getenv("API_KEY")
-client = OpenAI(api_key=API_KEY)
+client = openai.AsyncOpenAI(api_key=API_KEY)
 
 
 def generate_response(
+    customer_queue: multiprocessing.Queue,
+    audio_queue: multiprocessing.Queue,
+    measure_coffee_queue: multiprocessing.Queue,
+    capture_audio_event_flag,
+    recognize_customer_event_flag,
+):
+    asyncio.run(
+        generate_response_async(
+            customer_queue,
+            audio_queue,
+            measure_coffee_queue,
+            capture_audio_event_flag,
+            recognize_customer_event_flag,
+        )
+    )
+
+
+async def generate_response_async(
     customer_queue: multiprocessing.Queue,
     audio_queue: multiprocessing.Queue,
     measure_coffee_queue: multiprocessing.Queue,
@@ -81,33 +100,44 @@ def generate_response(
         customer = customer_queue.get()
         finished_conversation = False
         print(f"GPT task received info that customer {customer} arrived")
+
+        start = time.perf_counter()
+
         purchases = get_purchases(customer)
         customer_info = purchases.get("customer")
         purchase_history = purchases.get("purchases")
         coffees = get_coffees(only_active=True)
+
+        print(f"Time fetching CoffeeAPI info {time.perf_counter() - start}s")
+
         name = customer_info.get("firstname") if customer_info else "coffee enthusiast"
         history = []
         confirmed_quantity = 0
         confirmed_container = 0
         while not finished_conversation:
+            state_check_tasks = []
             for state in phase_prompt:
                 prompt = f"""
-            Verify if the current phase is '{state['name']}'.
-            The machine must accomplish the following goal for this phase: {state['goal']}.
-            Return `inPhase = True` if the goal has not been fully achieved, and `inPhase = False` once the goal is completed.
+                Verify if the current phase is '{state['name']}'.
+                The machine must accomplish the following goal for this phase: {state['goal']}.
+                Return `inPhase = True` if the goal has not been fully achieved, and `inPhase = False` once the goal is completed.
 
-            To accomplish the goal, follow these guidelines: {state["guideline"]}.
-            Additional details:
-            - Client's name: {name}.
-            - Purchase history: {json.dumps(purchase_history) if purchase_history else 'None'}.
-            - Coffee price is calculated per gram (provide the total price).
+                To accomplish the goal, follow these guidelines: {state["guideline"]}.
+                Additional details:
+                - Client's name: {name}.
+                - Purchase history: {json.dumps(purchase_history) if purchase_history else 'None'}.
+                - Coffee price is calculated per gram (provide the total price).
 
-            Generate a concise response that is clear, friendly, and suitable for text-to-speech. Focus on achieving the goal efficiently and avoid unrelated information.
-            """
-                # Chamada da função `request`
-                in_phase, response, quantity, container, total = request(
-                    coffees, history, prompt, None
-                )
+                Generate a concise response that is clear, friendly, and suitable for text-to-speech. Focus on achieving the goal efficiently and avoid unrelated information.
+                """
+
+                state_check_tasks.append(request(state, coffees, history, prompt))
+
+            start = time.perf_counter()
+            results = await asyncio.gather(*state_check_tasks)
+            print(f"Time checking main phases {time.perf_counter() - start}s")
+
+            for state, in_phase, response, quantity, container, total in results:
 
                 if in_phase:
                     print(f"Phase: {state['name']}")
@@ -178,9 +208,10 @@ def generate_response(
                 recognize_customer_event_flag.set()
                 break
 
-            user_response = transcript(audio_buffer)
+            user_response = await transcript(audio_buffer)
             history.append({"role": "user", "content": user_response})
 
+            has_to_stop_tasks = []
             for sp in stop_prompt:
 
                 prompt = f"""Verify if the current reason to stop is '{sp["name"]}'.
@@ -188,7 +219,14 @@ def generate_response(
                             To make this determination, {sp["guideline"]}.
                             Only generate a response if 'stop = True'.
                             """
-                stop, response = has_to_stop(coffees, history, prompt)
+
+                has_to_stop_tasks.append(has_to_stop(sp, coffees, history, prompt))
+
+            start = time.perf_counter()
+            results = await asyncio.gather(*has_to_stop_tasks)
+            print(f"Time checking if has to stop {time.perf_counter() - start}s")
+
+            for sp, stop, response in results:
                 if stop:
                     print(f"State: {sp['name']}")
                     print(f"Goal: {sp['goal']}")
@@ -201,10 +239,10 @@ def generate_response(
                     break
 
 
-def request(
-    coffees: list, history: list, phase_prompt: str, purchase_history: list
+async def request(
+    state: dict[str, str], coffees: list, history: list, phase_prompt: str
 ) -> tuple:
-    response = client.beta.chat.completions.parse(
+    response = await client.beta.chat.completions.parse(
         model="gpt-4o",
         messages=[
             {
@@ -228,11 +266,13 @@ def request(
     container = response["container"]
     total = response["total"]
 
-    return in_phase, message, quantity, container, total
+    return state, in_phase, message, quantity, container, total
 
 
-def has_to_stop(coffees: list, history: list, prompt: str) -> tuple:
-    response = client.beta.chat.completions.parse(
+async def has_to_stop(
+    stop_prompt: str, coffees: list, history: list, prompt: str
+) -> tuple:
+    response = await client.beta.chat.completions.parse(
         model="gpt-4o",
         messages=[
             {
@@ -250,10 +290,11 @@ def has_to_stop(coffees: list, history: list, prompt: str) -> tuple:
     stop = response["stop"]
     message = response["message"]
 
-    return stop, message
+    return stop_prompt, stop, message
 
 
-def transcript(audio: list) -> str:
+async def transcript(audio: list) -> str:
+    start = time.perf_counter()
     with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as temp_audio_file:
         with wave.open(temp_audio_file, "wb") as wf:
             wf.setnchannels(CHANNELS)
@@ -263,14 +304,18 @@ def transcript(audio: list) -> str:
 
         temp_audio_file.seek(0)
         file = io.BufferedReader(open(temp_audio_file.name, "rb"))
-
-        transcript = client.audio.transcriptions.create(
+        print(
+            f"Time to generate audio file to send to whisper = {time.perf_counter() - start}s"
+        )
+        start = time.perf_counter()
+        transcript = await client.audio.transcriptions.create(
             model="whisper-1",
             file=file,
             language="en",
             prompt="Reais, Etore, Henrique, Maria Luiza, Francisco, Felipe, Heitor",
         )
         user_response = transcript.text
+        print(f"Time to transcript in whisper = {time.perf_counter() - start}s")
 
     print(f"User said: {user_response}")
     return user_response
@@ -278,14 +323,20 @@ def transcript(audio: list) -> str:
 
 def play_audio(text: str):
     print("Text to speech...")
+    start = time.perf_counter()
     audio = gTTS(text=text, lang="en", slow=False)
-    print("Completed transformation")
+    print(f"Time to complete TTS = {time.perf_counter() - start}s")
     audio_bytes = io.BytesIO()
+
+    start = time.perf_counter()
     audio.write_to_fp(audio_bytes)
+    print(f"Time writing bytes to variable = {time.perf_counter() - start}s")
     audio_bytes.seek(0)
 
     pygame.mixer.init()
+    start = time.perf_counter()
     pygame.mixer.music.load(audio_bytes, "mp3")
+    print(f"Time to load audio in pygame = {time.perf_counter() - start}s")
     pygame.mixer.music.play()
     send_to_arduino("UPDATE:STATE:TALKING")
     while pygame.mixer.music.get_busy():
