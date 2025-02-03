@@ -8,6 +8,9 @@ import tempfile
 import concurrent.futures
 
 from dotenv import load_dotenv
+import subprocess
+import pyttsx3
+import time
 from gtts import gTTS
 import wave
 from embedded.gpt_dtos.dto import ResponseFormat, ResponseStopFormat
@@ -341,5 +344,46 @@ def play_audio(text: str):
     send_to_arduino("UPDATE:STATE:TALKING")
     while pygame.mixer.music.get_busy():
         time.sleep(0.3)
+
+    print("Finished playing sound")
+
+def play_audio_deepSeek_faster(text: str):
+    print("Text to speech...")
+    
+    # Start TTS timing
+    start = time.perf_counter()
+    
+    # Send state to Arduino *before* speech starts
+    send_to_arduino("UPDATE:STATE:TALKING")
+    
+    # Use espeak directly via subprocess (no network latency)
+    subprocess.run([
+        "espeak", 
+        "-ven+f3",  # English voice, female variant 3
+        "-s175",     # Speed: 175 words per minute (adjust as needed)
+        text
+    ])
+    
+    # Print total TTS + playback time
+    print(f"Total TTS + Playback Time = {time.perf_counter() - start:.2f}s")
+    print("Finished playing sound")
+
+
+
+
+def play_gpt_faster_audio(text: str):
+    print("Text to speech...")
+    start = time.perf_counter()
+
+    engine = pyttsx3.init()
+    engine.setProperty("rate", 180)  # Adjust speech speed if needed
+    engine.setProperty("volume", 1.0)  # Set volume (0.0 to 1.0)
+
+    print(f"Time to initialize pyttsx3 = {time.perf_counter() - start}s")
+    
+    start = time.perf_counter()
+    engine.say(text)
+    engine.runAndWait()
+    print(f"Time to complete TTS and playback = {time.perf_counter() - start}s")
 
     print("Finished playing sound")
