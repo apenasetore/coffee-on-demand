@@ -169,7 +169,8 @@ def register_new_customer(firstname: str, lastname: str, pics: list):
 
 async def request(state: dict[str, str], history: list, phase_prompt: str) -> tuple:
     response = await client.beta.chat.completions.parse(
-        model="gpt-4o",
+        model="gpt-3.5-turbo",
+        stream =True,
         messages=[
             {
                 "role": "system",
@@ -199,7 +200,8 @@ async def has_to_stop(
     stop_prompt: dict[str, str], history: list, phase_prompt: str
 ) -> tuple:
     response = await client.beta.chat.completions.parse(
-        model="gpt-4o",
+        model="gpt-3.5-turbo",
+        stream =True,
         messages=[
             {
                 "role": "system",
@@ -217,7 +219,7 @@ async def has_to_stop(
     )
     response = json.loads(response.choices[0].message.content)
     stop = response["stop"]
-    message = response["message"]
+    message = response["message"].replace("*", "")
 
     return stop_prompt, stop, message
 

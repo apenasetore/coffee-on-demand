@@ -64,7 +64,8 @@ def has_to_stop(messages, phase_prompt):
    
     
     response = client.beta.chat.completions.parse(
-                model="gpt-4o",
+                model="gpt-3.5-turbo",
+                stream =True,
                     messages=[
                         {"role": "system", "content": f'''You are a coffee grain vending machine with 4 types of grains available. 
                          You provide only coffee grains and can register users with their consent.  
@@ -92,7 +93,8 @@ def generate_response(messages, phase_prompt):
    
     
     response = client.beta.chat.completions.parse(
-                model="gpt-4o",
+                model="gpt-3.5-turbo",
+        s       tream =True,
                     messages=[
                         {"role": "system", "content": f'''You are a coffee grain vending machine with 4 types of grains available.  
                         Respond to this text according to the phase instructions. 

@@ -141,7 +141,7 @@ if __name__ == "__main__":
             print("System on")
             play_audio("Hello coffers! System will init in 3 seconds.")
             time.sleep(3)
-            recognize_customer_event_flag.set()
+            # recognize_customer_event_flag.set()
             measure_coffee_queue.put({"container_id": 1, "weight": 20, "customer_id": -1, "coffee_id": 39})
             time.sleep(100000)
     except KeyboardInterrupt:
