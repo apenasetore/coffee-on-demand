@@ -56,24 +56,29 @@ async def generate_response(
                 - Your task is to analyze the conversation history and determine if the client wants to register on the machine.
                 - Answer in an extremely concise way, with very short text, without topics.
                 - Benefits of registration are: be recognized when arrive again in the machine, receive recommendations based on previous purchases.
+                - Conversation phases: {phases}
                 """
 
         conversation_history = []
         register = False
         while True:
-        
+
             start = time.perf_counter()
             gpt_response = await request(main_prompt, conversation_history)
             print(f"Time checking main phases {time.perf_counter() - start}s")
             print(gpt_response)
 
-            conversation_history.append({"role": "assistant", "content": gpt_response.response})
+            conversation_history.append(
+                {"role": "assistant", "content": gpt_response.response}
+            )
 
             gpt.play_audio(gpt_response.response)
             if gpt_response.completed_conversation:
-                register = True if gpt_response.firstname and gpt_response.lastname else False
+                register = (
+                    True if gpt_response.firstname and gpt_response.lastname else False
+                )
                 break
-            
+
             try:
                 capture_audio_event_flag.set()
                 send_to_arduino("UPDATE:STATE:LISTENING")
@@ -93,9 +98,7 @@ async def generate_response(
 
         if register:
             send_to_arduino("UPDATE:STATE:REGISTERING")
-            pics = capture_pictures_base64(
-                3, 2, camera_event_flag, frames_queue
-            )
+            pics = capture_pictures_base64(3, 2, camera_event_flag, frames_queue)
             gpt.play_audio(
                 "I've already taken your pictures, now I will send them to registration! Thank you for your purchase."
             )
@@ -118,9 +121,7 @@ def register_new_customer(firstname: str, lastname: str, pics: list):
     return new_customer["customer"][0]["id"]
 
 
-async def request(
-    system_prompt: str, conversation_history: list[dict]
-):
+async def request(system_prompt: str, conversation_history: list[dict]):
     messages = [{"role": "system", "content": system_prompt}]
     messages.extend(conversation_history)
     response = await client.beta.chat.completions.parse(

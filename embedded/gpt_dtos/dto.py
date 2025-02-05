@@ -33,3 +33,10 @@ class GPTDataResponse(BaseModel):
     container_number: int = None
     total_price: float = None
     order_confirmed: bool = None
+
+
+class GPTRegistrationDataResponse(BaseModel):
+    response: str
+    firstname: str = None
+    lastname: str = None
+    completed_conversation: bool
