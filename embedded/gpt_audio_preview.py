@@ -170,7 +170,7 @@ def execute(
             try:
                 capture_audio_event_flag.set()
                 send_to_arduino("UPDATE:STATE:LISTENING")
-                audio_buffer = audio_queue.get(timeout=60)
+                audio_buffer = audio_queue.get(timeout=10)
                 print("Got audio from queue")
                 send_to_arduino("UPDATE:STATE:PROCESSING")
             except Exception as e:
@@ -189,11 +189,18 @@ def execute(
             pix = create_payment(gpt_data_response.total_price)
             play_audio("Please scan the QR Code in the LCD screen to pay.")
             send_to_arduino(f"UPDATE:PIX:{pix['payload']['payload']}")
-            payment = verify_payment(pix["paymentId"])
-            while not payment["paid"]:
-                print(payment["paid"])
+
+            try:
                 payment = verify_payment(pix["paymentId"])
-                time.sleep(3)
+                while not payment["paid"]:
+                    print(payment["paid"])
+                    payment = verify_payment(pix["paymentId"])
+                    time.sleep(3)
+            except Exception as e:
+                print(f"Payment failed: {e}")
+                play_audio("Oh, something wrong occurred with your payment, sorry.")
+                recognize_customer_event_flag.set()
+                continue
 
             chosen_coffee = None
             for coffee in coffees:
