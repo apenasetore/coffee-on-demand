@@ -306,6 +306,9 @@ def play_audio_from_base64(audio_base64: str, blocking: bool = True):
 
     start = time.perf_counter()
 
+    pygame.mixer.pre_init(44100, -16, 2, 512)
+    pygame.mixer.init()
+
     pygame.mixer.music.load(audio_buffer, "mp3")
     pygame.mixer.music.play()
 
