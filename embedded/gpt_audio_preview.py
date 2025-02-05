@@ -156,6 +156,8 @@ def execute(
             print(f"Time generating data response {time.perf_counter() - start}s")
             print(f"Current data from conversation: {gpt_data_response}")
 
+            block_until_audio_complete()
+
             if gpt_data_response.order_confirmed:
                 proceed_to_payment = True
                 break
@@ -295,12 +297,6 @@ def transcript(audio: list) -> str:
 
 
 def play_audio_from_base64(audio_base64: str, blocking: bool = True):
-    pygame.mixer.pre_init(44100, -16, 2, 512)
-    pygame.mixer.init()
-
-    while pygame.mixer.music.get_busy():
-        time.sleep(0.1)
-
     start = time.perf_counter()
 
     audio_bytes = base64.b64decode(audio_base64)
@@ -318,6 +314,11 @@ def play_audio_from_base64(audio_base64: str, blocking: bool = True):
     if blocking:
         while pygame.mixer.music.get_busy():
             time.sleep(0.1)
+
+
+def block_until_audio_complete():
+    while pygame.mixer.music.get_busy():
+        time.sleep(0.1)
 
 
 def play_audio(text: str):

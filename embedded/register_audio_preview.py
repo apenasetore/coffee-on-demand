@@ -76,7 +76,7 @@ def generate_response(
             )
             print(f"Time generating audio response {time.perf_counter() - start}s")
             print(f"Audio transcription: {gpt_audio_response.transcription}")
-            gpt.play_audio_from_base64(gpt_audio_response.audio_base64)
+            gpt.play_audio_from_base64(gpt_audio_response.audio_base64, blocking=False)
 
             conversation_history.append(
                 {"role": "assistant", "audio": {"id": gpt_audio_response.audio_id}}
@@ -90,7 +90,8 @@ def generate_response(
             )
             print(f"Time generating data response {time.perf_counter() - start}s")
             print(f"Current data from conversation: {gpt_data_response}")
-            gpt.play_audio_from_base64(gpt_audio_response.audio_base64, blocking=False)
+
+            gpt.block_until_audio_complete()
 
             if gpt_data_response.user_intent_gotten:
                 register = (
