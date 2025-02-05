@@ -69,12 +69,12 @@ def generate_response(
         text_conversation_history = []
         register = False
         while True:
-
+            global_start = time.perf_counter()
             start = time.perf_counter()
             gpt_audio_response = gpt.generate_audio_response(
                 first_stage_prompt, conversation_history
             )
-            print(f"Time generating audio response {time.perf_counter() - start}s")
+            print(f"TOTAL TIME UNTIL RESPONSE AUDIO PLAYS {time.perf_counter() - start}s")
             print(f"Audio transcription: {gpt_audio_response.transcription}")
             gpt.play_audio_from_base64(gpt_audio_response.audio_base64, blocking=False)
 
@@ -85,11 +85,14 @@ def generate_response(
                 {"role": "assistant", "content": gpt_audio_response.transcription}
             )
 
+            start = time.perf_counter()
             gpt_data_response = gpt.generate_data_from_audio(
                 second_stage_prompt, text_conversation_history, GPTStage.REGISTRATION
             )
-            print(f"Time generating data response {time.perf_counter() - start}s")
+            print(f"TOTAL TIME GETTING DATA FROM CONVERSATION {time.perf_counter() - start}s")
             print(f"Current data from conversation: {gpt_data_response}")
+
+            print(f"TOTAL TIME SPENT GENERATING RESPONSE {time.perf_counter() - global_start}s")
 
             gpt.block_until_audio_complete()
 
