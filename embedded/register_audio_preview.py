@@ -10,6 +10,7 @@ import time
 import numpy as np
 import embedded.coffee_api.api as coffee_api
 from embedded.arduino import send_to_arduino
+from embedded.gpt_dtos.dto import GPTStage
 
 load_dotenv()
 API_KEY = os.getenv("API_KEY")
@@ -84,7 +85,7 @@ def generate_response(
             )
 
             gpt_data_response = gpt.generate_data_from_audio(
-                second_stage_prompt, text_conversation_history
+                second_stage_prompt, text_conversation_history, GPTStage.REGISTRATION
             )
             print(f"Time generating data response {time.perf_counter() - start}s")
             print(f"Current data from conversation: {gpt_data_response}")
