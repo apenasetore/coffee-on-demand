@@ -110,6 +110,7 @@ def execute(
             - You are selling in Reais, Brazil's currency. Do not speak portuguese.
             - Coffee price is calculated per gram (provide the total price).
             - Coffees available: {json.dumps(coffees)}
+            - Coffee weight range is between 20g and 300g
             - Your task is to analyze the conversation history and identify in what phase it is
             - Phases of conversation: {phases}
             - Answer in an concise way, very small text, without topics and DO NOT MENTION the phases in response.
