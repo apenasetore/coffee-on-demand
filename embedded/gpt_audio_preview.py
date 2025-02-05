@@ -141,7 +141,7 @@ def execute(
             )
             print(f"Time generating audio response {time.perf_counter() - start}s")
             print(f"Audio transcription: {gpt_audio_response.transcription}")
-            play_audio_from_base64(gpt_audio_response.audio_base64)
+            play_audio_from_base64(gpt_audio_response.audio_base64, blocking=False)
 
             conversation_history.append(
                 {"role": "assistant", "audio": {"id": gpt_audio_response.audio_id}}
@@ -295,6 +295,9 @@ def transcript(audio: list) -> str:
 
 
 def play_audio_from_base64(audio_base64: str, blocking: bool = True):
+    pygame.mixer.pre_init(44100, -16, 2, 512)
+    pygame.mixer.init()
+
     while pygame.mixer.music.get_busy():
         time.sleep(0.1)
 
@@ -307,8 +310,6 @@ def play_audio_from_base64(audio_base64: str, blocking: bool = True):
 
     start = time.perf_counter()
 
-    pygame.mixer.pre_init(44100, -16, 2, 512)
-    pygame.mixer.init()
     pygame.mixer.music.load(audio_buffer, "mp3")
     pygame.mixer.music.play()
 

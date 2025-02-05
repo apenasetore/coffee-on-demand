@@ -90,8 +90,8 @@ def generate_response(
             )
             print(f"Time generating data response {time.perf_counter() - start}s")
             print(f"Current data from conversation: {gpt_data_response}")
+            gpt.play_audio_from_base64(gpt_audio_response.audio_base64, blocking=False)
 
-            gpt.play_audio_from_base64(gpt_audio_response.audio_base64)
             if gpt_data_response.user_intent_gotten:
                 register = (
                     True
