@@ -51,6 +51,9 @@ def dispense_task(
         hx.reset()
         hx.tare()
 
+        hx.power_down()
+        hx.power_up()
+
         print("Staring to dispense")
 
         send_to_arduino("UPDATE:WEIGHT:0")
@@ -62,8 +65,6 @@ def dispense_task(
         last_reading = weight
         weight_reduction = False
         while weight < requested_coffee_weight or weight_reduction:
-            hx.power_down()
-            hx.power_up()
             weight = int(hx.get_weight(3))
 
             if weight >= requested_coffee_weight:
@@ -142,8 +143,6 @@ def dispense_task(
         while weight > -2:  # 2 gramas de erro
             play_audio("Please remove your coffee!")
             time.sleep(3)
-            hx.power_down()
-            hx.power_up()
             weight = int(hx.get_weight(3))
 
         if customer_id == -1:
