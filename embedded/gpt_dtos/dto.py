@@ -43,6 +43,6 @@ class GPTRegistrationDataResponse(BaseModel):
     completed_conversation: bool
 
 
-class GPTStage(Enum, str):
+class GPTStage(str, Enum):
     NORMAL_FLOW = "NORMAL_FLOW"
     REGISTRATION = "REGISTRATION"
