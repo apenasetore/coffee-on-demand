@@ -8,7 +8,13 @@ import tempfile
 from dotenv import load_dotenv
 import time
 import wave
-from embedded.gpt_dtos.dto import GPTAudioResponse, GPTDataResponse, GPTInteraction
+from embedded.gpt_dtos.dto import (
+    GPTAudioResponse,
+    GPTDataResponse,
+    GPTInteraction,
+    GPTRegistrationDataResponse,
+    GPTStage,
+)
 import openai
 import time
 import pygame
@@ -130,7 +136,6 @@ def execute(
         while True:
 
             start = time.perf_counter()
-            print(conversation_history)
             gpt_audio_response = generate_audio_response(
                 first_stage_prompt, conversation_history
             )
@@ -232,8 +237,10 @@ def generate_audio_response(
 
 
 def generate_data_from_audio(
-    system_prompt: str, conversation_history: list[dict]
-) -> GPTDataResponse:
+    system_prompt: str,
+    conversation_history: list[dict],
+    stage: GPTStage = GPTStage.NORMAL_FLOW,
+) -> GPTDataResponse | GPTRegistrationDataResponse:
     messages = [
         {"role": "system", "content": system_prompt},
         {
@@ -242,11 +249,21 @@ def generate_data_from_audio(
         },
     ]
     gpt_response = client.beta.chat.completions.parse(
-        model="gpt-4o-mini", messages=messages, response_format=GPTDataResponse
+        model="gpt-4o-mini",
+        messages=messages,
+        response_format=(
+            GPTDataResponse
+            if stage == GPTStage.NORMAL_FLOW
+            else GPTRegistrationDataResponse
+        ),
     )
 
     gpt_data_response = json.loads(gpt_response.choices[0].message.content)
-    return GPTDataResponse(**gpt_data_response)
+    return (
+        GPTDataResponse(**gpt_data_response)
+        if stage == GPTStage.NORMAL_FLOW
+        else GPTRegistrationDataResponse(**gpt_data_response)
+    )
 
 
 def transcript(audio: list) -> str:

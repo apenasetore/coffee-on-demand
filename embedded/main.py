@@ -10,7 +10,7 @@ from embedded.client_recognition import recognize_customer, generate_new_encodin
 
 from embedded.gpt_audio_preview import generate_response, play_audio
 
-from embedded.register import register_customer
+from embedded.register_audio_preview import register_customer
 from embedded.motors import motor_task
 from embedded.measure_coffee import dispense_task
 from embedded.cup_sensor import read_sensor_thread

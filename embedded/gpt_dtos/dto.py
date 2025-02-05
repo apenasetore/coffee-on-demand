@@ -1,3 +1,4 @@
+from enum import Enum
 from pydantic import BaseModel
 
 
@@ -40,3 +41,8 @@ class GPTRegistrationDataResponse(BaseModel):
     firstname: str = None
     lastname: str = None
     completed_conversation: bool
+
+
+class GPTStage(Enum, str):
+    NORMAL_FLOW = "NORMAL_FLOW"
+    REGISTRATION = "REGISTRATION"
