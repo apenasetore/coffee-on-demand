@@ -40,7 +40,7 @@ class GPTRegistrationDataResponse(BaseModel):
     response: str
     firstname: str = None
     lastname: str = None
-    completed_conversation: bool
+    user_intent_gotten: bool
 
 
 class GPTStage(str, Enum):
