@@ -1,10 +1,6 @@
-import asyncio
-import threading
 import multiprocessing
 import time
-import queue
 
-import serial
 from embedded.arduino import initialize_arduino
 from embedded.audio import capture_audio
 
@@ -12,7 +8,7 @@ from embedded.camera import camera_thread
 
 from embedded.client_recognition import recognize_customer, generate_new_encodings
 
-from embedded.gpt_henrique import generate_response, play_audio
+from embedded.gpt_audio_preview import generate_response, play_audio
 
 from embedded.register import register_customer
 from embedded.motors import motor_task
@@ -62,7 +58,7 @@ if __name__ == "__main__":
             coffee_container,
         ),
     ).start()
-    
+
     multiprocessing.Process(
         target=dispense_task,
         daemon=True,

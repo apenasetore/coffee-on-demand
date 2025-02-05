@@ -3,9 +3,8 @@ from collections import defaultdict
 import time
 import cv2
 import face_recognition
-import os
 import pickle
-import embedded.gpt_henrique as gpt
+import embedded.gpt_audio_preview as gpt
 
 import numpy as np
 
@@ -31,7 +30,9 @@ def generate_new_encodings(
 
     customers = get_customers()
 
-    gpt.play_audio("I'm taking a time to generate my new data for recognition of the last customer. One minute please.")
+    gpt.play_audio(
+        "I'm taking a time to generate my new data for recognition of the last customer. One minute please."
+    )
     send_to_arduino("UPDATE:STATE:PROCESSING")
 
     known_face_encodings = []
@@ -71,8 +72,12 @@ def load_model():
 
 
 def recognize_customer(
-    recognize_customer_event_flag, load_encodings_event_flag, register_customer_event_flag, customer_queue, camera_event_flag,
-    frames_queue
+    recognize_customer_event_flag,
+    load_encodings_event_flag,
+    register_customer_event_flag,
+    customer_queue,
+    camera_event_flag,
+    frames_queue,
 ):
     data = load_model()
     while True:
@@ -120,7 +125,7 @@ def recognize_customer(
                 if count >= 1:
                     customer_queue.put(customer_id)
                     gpt.play_audio("Oh, hi there!")
-                    #register_customer_event_flag.set()
+                    # register_customer_event_flag.set()
                     recognize_customer_event_flag.clear()
 
             time.sleep(1)

@@ -2,8 +2,6 @@ import multiprocessing
 import RPi.GPIO as GPIO
 import time
 
-from embedded.gpt import play_audio
-
 DIR_PIN = 12  # Pino para definir a direção
 M1_STEP_PIN = 5  # Pino para enviar os pulsos de passo
 M2_STEP_PIN = 6
@@ -13,17 +11,19 @@ M4_STEP_PIN = 26
 DELAY = 0.001
 BIG_DELAY = 0.003
 
+
 def setup():
     GPIO.setmode(GPIO.BCM)
     GPIO.setup(M1_STEP_PIN, GPIO.OUT)
     GPIO.setup(M2_STEP_PIN, GPIO.OUT)
     GPIO.setup(M3_STEP_PIN, GPIO.OUT)
     GPIO.setup(M4_STEP_PIN, GPIO.OUT)
-    
+
     GPIO.setup(DIR_PIN, GPIO.OUT)
     GPIO.output(DIR_PIN, GPIO.LOW)
 
     clean_motors()
+
 
 def clean_motors():
     GPIO.output(M1_STEP_PIN, GPIO.LOW)
@@ -33,7 +33,12 @@ def clean_motors():
     print("Cleaned motors")
 
 
-def motor_task(turn_on_motor_event_flag, removed_coffee_container, slow_mode_event_flag, coffee_container):
+def motor_task(
+    turn_on_motor_event_flag,
+    removed_coffee_container,
+    slow_mode_event_flag,
+    coffee_container,
+):
     setup()
 
     coffee_configs = [M1_STEP_PIN, M2_STEP_PIN, M3_STEP_PIN, M4_STEP_PIN]
@@ -56,7 +61,7 @@ def motor_task(turn_on_motor_event_flag, removed_coffee_container, slow_mode_eve
                 step_pin = coffee_configs[coffee_index]
 
             if turn_on_motor_event_flag.is_set():
-                #print(f"Forward {step_pin} with delay {delay}")
+                # print(f"Forward {step_pin} with delay {delay}")
                 GPIO.output(DIR_PIN, GPIO.HIGH)
                 for _ in range(positive_gain):
                     if not turn_on_motor_event_flag.is_set():
@@ -65,14 +70,14 @@ def motor_task(turn_on_motor_event_flag, removed_coffee_container, slow_mode_eve
                         print("Removed coffee container")
                         break
                     GPIO.output(step_pin, GPIO.HIGH)
-                    time.sleep(delay) 
+                    time.sleep(delay)
                     GPIO.output(step_pin, GPIO.LOW)
                     time.sleep(delay)
 
             if turn_on_motor_event_flag.is_set():
-                #print("Backwards")
+                # print("Backwards")
                 if not slow_mode_event_flag.is_set():
-                    GPIO.output(DIR_PIN, GPIO.LOW) 
+                    GPIO.output(DIR_PIN, GPIO.LOW)
                     for _ in range(negative_gain):
                         if not turn_on_motor_event_flag.is_set():
                             break
@@ -80,7 +85,7 @@ def motor_task(turn_on_motor_event_flag, removed_coffee_container, slow_mode_eve
                             print("Removed coffee container")
                             break
                         GPIO.output(step_pin, GPIO.HIGH)
-                        time.sleep(delay) 
+                        time.sleep(delay)
                         GPIO.output(step_pin, GPIO.LOW)
                         time.sleep(delay)
 

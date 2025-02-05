@@ -12,6 +12,7 @@ class GPTInteractionRegistration(BaseModel):
     lastname: str = None
     completed_conversation: bool
 
+
 class GPTInteraction(BaseModel):
     response: str
     chosen_coffee_weight: int = None
@@ -20,16 +21,15 @@ class GPTInteraction(BaseModel):
     order_confirmed: bool = None
 
 
-class ResponseFormat(BaseModel):
-    in_phase: bool
-    message: str
-    quantity: int
-    container: int
-    total: float
-    want_to_register: bool
+class GPTAudioResponse(BaseModel):
+    audio_base64: str
+    transcription: str
+    audio_id: str
 
 
-class ResponseStopFormat(BaseModel):
-    stop: bool
-    message: str
-    reason: str
+class GPTDataResponse(BaseModel):
+    response: str
+    chosen_coffee_weight: int = None
+    container_number: int = None
+    total_price: float = None
+    order_confirmed: bool = None

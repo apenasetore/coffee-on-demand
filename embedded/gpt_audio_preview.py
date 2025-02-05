@@ -1,4 +1,4 @@
-import asyncio
+import base64
 import io
 import json
 import multiprocessing
@@ -7,13 +7,11 @@ import time
 import tempfile
 from dotenv import load_dotenv
 import time
-from gtts import gTTS
 import wave
-from embedded.gpt_dtos.dto import GPTInteraction
+from embedded.gpt_dtos.dto import GPTAudioResponse, GPTDataResponse, GPTInteraction
 import openai
-import subprocess
 import time
-import pyttsx3
+import pygame
 
 from embedded.audio import CHANNELS, RATE
 from embedded.coffee_api.api import (
@@ -26,7 +24,7 @@ from embedded.arduino import send_to_arduino
 
 load_dotenv()
 API_KEY = os.getenv("API_KEY")
-client = openai.AsyncOpenAI(api_key=API_KEY)
+client = openai.OpenAI(api_key=API_KEY)
 
 
 def generate_response(
@@ -36,18 +34,17 @@ def generate_response(
     capture_audio_event_flag,
     recognize_customer_event_flag,
 ):
-    asyncio.run(
-        generate_response_async(
-            customer_queue,
-            audio_queue,
-            measure_coffee_queue,
-            capture_audio_event_flag,
-            recognize_customer_event_flag,
-        )
+
+    execute(
+        customer_queue,
+        audio_queue,
+        measure_coffee_queue,
+        capture_audio_event_flag,
+        recognize_customer_event_flag,
     )
 
 
-async def generate_response_async(
+def execute(
     customer_queue: multiprocessing.Queue,
     audio_queue: multiprocessing.Queue,
     measure_coffee_queue: multiprocessing.Queue,
@@ -102,33 +99,59 @@ async def generate_response_async(
 
         name = customer_info.get("firstname") if customer_info else "coffee enthusiast"
 
-        main_prompt = f"""You are a coffee vending machine that sells coffee grains. Follow the instructions below:  
+        first_stage_prompt = f"""You are a coffee vending machine that sells coffee grains. For the response, always generate audio. 
+            Follow the instructions below:  
             - You are selling in Reais, Brazil's currency. Do not speak portuguese.
             - Coffee price is calculated per gram (provide the total price).
             - Coffees available: {json.dumps(coffees)}
             - Your task is to analyze the conversation history and identify in what phase it is
             - Phases of conversation: {phases}
-            - Answer in an concise way, very small text, without topics and do not use '/' or '*' in answer.
+            - Answer in an concise way, very small text, without topics and DO NOT MENTION the phases in response.
             
             Additional details:
             - Client's name: {name}
             - Purchase history: {json.dumps(purchase_history) if purchase_history else 'This client has no purchase history'}."""
 
+        second_stage_prompt = f"""You are a conversation analyzer of a coffee vending machine and a customer.
+            You need to read the conversation check if all necessary information has been gotten.
+            
+            - In this object, you can find in which container is each coffee: {json.dumps(coffees)}
+            
+            Remember to fill obrigatory fields:
+            
+            - chosen_coffee_weight
+            - container_number (is the number of the container where the chosen coffee is located at)
+            - total_price
+            - order_confirmed (if and only if the client confirm its order. Do not set it as true if assistant ask and the client didnt answer)"""
+
         conversation_history = []
+        text_conversation_history = []
         proceed_to_payment = False
         while True:
 
             start = time.perf_counter()
-            gpt_response = await request(main_prompt, conversation_history)
-            print(f"Time checking main phases {time.perf_counter() - start}s")
-            print(gpt_response)
+            print(conversation_history)
+            gpt_audio_response = generate_audio_response(
+                first_stage_prompt, conversation_history
+            )
+            print(f"Time generating audio response {time.perf_counter() - start}s")
+            print(f"Audio transcription: {gpt_audio_response.transcription}")
 
             conversation_history.append(
-                {"role": "assistant", "content": gpt_response.response}
+                {"role": "assistant", "audio": {"id": gpt_audio_response.audio_id}}
+            )
+            text_conversation_history.append(
+                {"role": "assistant", "content": gpt_audio_response.transcription}
             )
 
-            play_audio(gpt_response.response)
-            if gpt_response.order_confirmed:
+            gpt_data_response = generate_data_from_audio(
+                second_stage_prompt, text_conversation_history
+            )
+            print(f"Time generating data response {time.perf_counter() - start}s")
+            print(f"Current data from conversation: {gpt_data_response}")
+
+            play_audio_from_base64(gpt_audio_response.audio_base64)
+            if gpt_data_response.order_confirmed:
                 proceed_to_payment = True
                 break
 
@@ -145,12 +168,13 @@ async def generate_response_async(
                 recognize_customer_event_flag.set()
                 break
 
-            user_response = await transcript(audio_buffer)
+            user_response = transcript(audio_buffer)
             conversation_history.append({"role": "user", "content": user_response})
+            text_conversation_history.append({"role": "user", "content": user_response})
 
         if proceed_to_payment:
             print(f"Finished conversation, generating pix and waiting for deposit.")
-            pix = create_payment(gpt_response.total_price)
+            pix = create_payment(gpt_data_response.total_price)
             play_audio("Please scan the QR Code in the LCD screen to pay.")
             send_to_arduino(f"UPDATE:PIX:{pix['payload']['payload']}")
             payment = verify_payment(pix["paymentId"])
@@ -161,40 +185,71 @@ async def generate_response_async(
 
             chosen_coffee = None
             for coffee in coffees:
-                if coffee["container"] == str(gpt_response.container_number):
+                if coffee["container"] == str(gpt_data_response.container_number):
                     chosen_coffee = coffee["id"]
                     break
 
             print(
-                f"Finished conversation, putting order of container {gpt_response.container_number}, {gpt_response.chosen_coffee_weight} grams."
+                f"Finished conversation, putting order of container {gpt_data_response.container_number}, {gpt_data_response.chosen_coffee_weight} grams."
             )
 
             play_audio("Payment confirmed! Let's dispense!")
 
             measure_coffee_queue.put(
                 {
-                    "container_id": gpt_response.container_number - 1,
-                    "weight": gpt_response.chosen_coffee_weight,
+                    "container_id": gpt_data_response.container_number - 1,
+                    "weight": gpt_data_response.chosen_coffee_weight,
                     "customer_id": customer,
                     "coffee_id": chosen_coffee,
                 }
             )
 
 
-async def request(system_prompt: str, conversation_history: list[dict]):
+def generate_audio_response(
+    system_prompt: str, conversation_history: list[dict]
+) -> GPTAudioResponse:
     messages = [{"role": "system", "content": system_prompt}]
     messages.extend(conversation_history)
-    response = await client.beta.chat.completions.parse(
-        model="gpt-4o-mini",
+    gpt_audio_response = client.chat.completions.create(
+        model="gpt-4o-mini-audio-preview",
         messages=messages,
-        response_format=GPTInteraction,
+        modalities=["text", "audio"],
+        audio={
+            "voice": "sage",
+            "format": "mp3",
+        },
+        timeout=10,
     )
-    response = json.loads(response.choices[0].message.content)
 
-    return GPTInteraction(**response)
+    audio_id = gpt_audio_response.choices[0].message.audio.id
+    audio_base64 = gpt_audio_response.choices[0].message.audio.data
+    transcription = gpt_audio_response.choices[0].message.audio.transcript
+    return GPTAudioResponse(
+        audio_base64=audio_base64,
+        transcription=transcription,
+        audio_id=audio_id,
+    )
 
 
-async def transcript(audio: list) -> str:
+def generate_data_from_audio(
+    system_prompt: str, conversation_history: list[dict]
+) -> GPTDataResponse:
+    messages = [
+        {"role": "system", "content": system_prompt},
+        {
+            "role": "user",
+            "content": f"The conversation is this: {conversation_history}",
+        },
+    ]
+    gpt_response = client.beta.chat.completions.parse(
+        model="gpt-4o-mini", messages=messages, response_format=GPTDataResponse
+    )
+
+    gpt_data_response = json.loads(gpt_response.choices[0].message.content)
+    return GPTDataResponse(**gpt_data_response)
+
+
+def transcript(audio: list) -> str:
     start = time.perf_counter()
     with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as temp_audio_file:
         with wave.open(temp_audio_file, "wb") as wf:
@@ -209,11 +264,11 @@ async def transcript(audio: list) -> str:
             f"Time to generate audio file to send to whisper = {time.perf_counter() - start}s"
         )
         start = time.perf_counter()
-        transcript = await client.audio.transcriptions.create(
+        transcript = client.audio.transcriptions.create(
             model="whisper-1",
             file=file,
             language="en",
-            prompt="Reais, Etore, Henrique, Maria Luiza, Francisco, Felipe, Heitor",
+            prompt="Reais, Etore, Henrique, Maria Luiza, Francisco, Felipe, Heitor, João, Fabro, Alberto",
         )
         user_response = transcript.text
         print(f"Time to transcript in whisper = {time.perf_counter() - start}s")
@@ -222,73 +277,49 @@ async def transcript(audio: list) -> str:
     return user_response
 
 
-# def play_audio(text: str):
-#     print("Text to speech...")
-#     start = time.perf_counter()
-#     audio = gTTS(text=text, lang="en", slow=False)
-#     print(f"Time to complete TTS = {time.perf_counter() - start}s")
-#     audio_bytes = io.BytesIO()
+def play_audio_from_base64(audio_base64: str):
+    start = time.perf_counter()
 
-#     start = time.perf_counter()
-#     audio.write_to_fp(audio_bytes)
-#     print(f"Time writing bytes to variable = {time.perf_counter() - start}s")
-#     audio_bytes.seek(0)
+    audio_bytes = base64.b64decode(audio_base64)
+    audio_buffer = io.BytesIO(audio_bytes)
 
-#     pygame.mixer.init()
-#     start = time.perf_counter()
-#     pygame.mixer.music.load(audio_bytes, "mp3")
-#     print(f"Time to load audio in pygame = {time.perf_counter() - start}s")
-#     pygame.mixer.music.play()
-#     send_to_arduino("UPDATE:STATE:TALKING")
-#     while pygame.mixer.music.get_busy():
-#         time.sleep(0.3)
+    print(f"Time waiting for base64 decode {time.perf_counter() - start}s")
 
-#     print("Finished playing sound")
+    start = time.perf_counter()
 
+    pygame.mixer.pre_init(44100, -16, 2, 512)
+    pygame.mixer.init()
+    pygame.mixer.music.load(audio_buffer, "mp3")
+    pygame.mixer.music.play()
 
-# ##play audio deepssek
-# async def play_audio(text: str):
-#     print("Text to speech...")
+    print(f"Time waiting for pyaudio {time.perf_counter() - start}s")
 
-#     # Start TTS timing
-#     start = time.perf_counter()
-
-#     # Send state to Arduino *before* speech starts
-#     send_to_arduino("UPDATE:STATE:TALKING")
-
-#     # Use espeak asynchronously
-#     process = await asyncio.create_subprocess_exec(
-#         "espeak",
-#         "-ven+f3",  # English voice, female variant 3
-#         "-s175",     # Speed: 175 words per minute
-#         text,
-#         stdout=asyncio.subprocess.DEVNULL,  # Ignore stdout
-#         stderr=asyncio.subprocess.DEVNULL   # Ignore stderr
-#     )
-
-#     # Wait for the process to complete
-#     await process.wait()
+    while pygame.mixer.music.get_busy():
+        time.sleep(0.1)
 
 
 def play_audio(text: str):
-    print("Text to speech...")
-    text = text.replace("*", "")
-    # Start TTS timing
+
     start = time.perf_counter()
 
-    # Send state to Arduino before speech starts
-    send_to_arduino("UPDATE:STATE:TALKING")
+    prompt = """Act like a TTS model. You need just to repeat the EXACT SAME text sent by the user"""
+    messages = [
+        {"role": "system", "content": prompt},
+        {"role": "user", "content": text},
+    ]
+    gpt_audio_response = client.chat.completions.create(
+        model="gpt-4o-mini-audio-preview",
+        messages=messages,
+        modalities=["text", "audio"],
+        audio={
+            "voice": "sage",
+            "format": "mp3",
+        },
+    )
 
-    # Use espeak in a blocking manner
-    subprocess.run(
-        [
-            "espeak",
-            "-ven+f3",  # English voice, female variant 3
-            "-s150",  # Speed: 175 words per minute
-            text,
-        ],
-        check=True,
-    )  # `check=True` ensures errors are raised
+    print(
+        f"Time waiting for GPT to generate audio from text to play audio {time.perf_counter() - start}s"
+    )
 
-    print(f"Total TTS + Playback Time = {time.perf_counter() - start:.2f}s")
-    print("Finished playing sound")
+    audio_base64 = gpt_audio_response.choices[0].message.audio.data
+    play_audio_from_base64(audio_base64)
