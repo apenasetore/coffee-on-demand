@@ -33,21 +33,21 @@ try:
             for i in range(5):
                 GPIO.output(DIR_PIN, GPIO.HIGH)
 
-                for _ in range(100):  # 200 passos (ajuste conforme necessário)
+                for _ in range(200):  # 200 passos (ajuste conforme necessário)
                     GPIO.output(motor, GPIO.HIGH)
-                    time.sleep(0.001)  # Tempo HIGH (ajuste para controle de velocidade)
+                    time.sleep(0.0005)  # Tempo HIGH (ajuste para controle de velocidade)
                     GPIO.output(motor, GPIO.LOW)
-                    time.sleep(0.001)  # Tempo LOW
+                    time.sleep(0.0005)  # Tempo LOW
                     print("Rotating")
 
 
                 GPIO.output(DIR_PIN, GPIO.LOW) 
 
-                for _ in range(50):  # 200 passos (ajuste conforme necessário)
+                for _ in range(100):  # 200 passos (ajuste conforme necessário)
                     GPIO.output(motor, GPIO.HIGH)
-                    time.sleep(0.001)  # Tempo HIGH (ajuste para controle de velocidade)
+                    time.sleep(0.0005)  # Tempo HIGH (ajuste para controle de velocidade)
                     GPIO.output(motor, GPIO.LOW)
-                    time.sleep(0.001)  # Tempo LOW
+                    time.sleep(0.0005)  # Tempo LOW
                     print("Rotating")
             
             time.sleep(0.5)

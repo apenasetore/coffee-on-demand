@@ -5,7 +5,7 @@ import cv2
 import face_recognition
 import os
 import pickle
-import embedded.gpt as gpt
+import embedded.gpt_henrique as gpt
 
 import numpy as np
 

@@ -11,7 +11,7 @@ from dotenv import load_dotenv
 import time
 from gtts import gTTS
 import wave
-from embedded.gpt_dtos.dto import ResponseFormat, ResponseStopFormat
+from embedded.gpt_dtos.dto import ResponseFormat, ResponseStopFormat, GPTInteraction
 import pygame
 from pydub import AudioSegment
 import openai
@@ -81,9 +81,8 @@ async def generate_response_async(
         },
         {
             "name": "FinishedState",
-            "goal": "You have said goodbye to the user after the order confirmation.",
-            "guideline": "After the user confirms the order, provide a final thank you message and conclude the conversation without any additional prompts or questions. Once the goodbye message is provided, return `inPhase = False` to indicate that the goal is fully achieved."
-
+            "goal": "You have not said goodbye to the user after the order confirmation",
+            "guideline": "Once the user confirms the order, provide a final thank you message and conclude the conversation without any additional prompts or questions. Ensure that this state marks the complete fulfillment of the order process by returning `inPhase = False` to indicate that the goal is fully achieved."
         },
         {
             "name": "Incompatible",
@@ -113,99 +112,32 @@ async def generate_response_async(
 
         main_prompt = f"""You are a coffee vending machine that sells coffee grains. Follow the instructions below:  
             - You are selling in Reais, Brazil's currency. Do not speak portuguese.
+            - Coffee price is calculated per gram (provide the total price).
             - Coffees available: {json.dumps(coffees)}
             - Your task is to analyze the conversation history and identify in what phase it is
             - Phases of conversation: {phases}
-            - Answer in an concise way, without topics"""
+            - Answer in an concise way, very small text, without topics and do not use '/' or '*' in answer.
+            
+            Additional details:
+            - Client's name: {name}
+            - Purchase history: {json.dumps(purchase_history) if purchase_history else 'This client has no purchase history'}."""
 
-        while not finished_conversation:
-            state_check_tasks = []
-            for state in phases:
-                prompt = f"""
-                Check if the current phase is '{state['name']}'.
-                The goal for this phase is: {state['goal']}.
-
-                Return false if you not have achived 
-
-                If the goal for this phase has been fully achieved, return:
-                    inPhase = False
-
-                Follow these guidelines to accomplish the phase's goal:
-                {state["guideline"]}
-
-                To accomplish the goal, follow these guidelines: {state["guideline"]}.
-                Additional details:
-                - Client's name: {name}.
-                - Purchase history: {json.dumps(purchase_history) if purchase_history else 'None'}.
-                - Coffee price is calculated per gram (provide the total price).
-
-                Generate a concise response that is clear, friendly, and suitable for text-to-speech. Focus on achieving the goal efficiently and avoid unrelated information.
-                """
-
-                state_check_tasks.append(request(state, coffees, history, prompt))
-
+        conversation_history = []
+        proceed_to_payment = False
+        while True:
+            
             start = time.perf_counter()
-            results = await asyncio.gather(*state_check_tasks)
+            gpt_response = await request(main_prompt, conversation_history)
             print(f"Time checking main phases {time.perf_counter() - start}s")
+            print(gpt_response)
 
-            for state, in_phase, response, quantity, container, total in results:
+            conversation_history.append({"role": "assistant", "content": gpt_response.response})
 
-                if in_phase:
-                    print(f"Phase: {state['name']}")
-                    print(f"Goal: {state['goal']}")
-                    print(f"Response: {response}")
-                    history.append({"role": "assistant", "content": response})
-                    if quantity != 0:
-                        confirmed_quantity = quantity
-                        print(f"Saving quantity of {confirmed_quantity} grams")
-                    if container != 0:
-                        confirmed_container = container
-                        print(f"Saving container number {confirmed_container}")
-
-                    if state["name"] == "FinishedState":
-                        finished_conversation = True
-
-                    break
-
-            if in_phase:
-                play_audio(response)
-            else:
-                play_audio("Sorry, i did not understand, can you repeat?")
-
-            if finished_conversation:
-                print(f"Finished conversation, generating pix and waiting for deposit.")
-
-                pix = create_payment(total)
-                play_audio("Please scan the QR Code in the LCD screen to pay.")
-                send_to_arduino(f"UPDATE:PIX:{pix['payload']['payload']}")
-                payment = verify_payment(pix["paymentId"])
-                while not payment["paid"]:
-                    print(payment["paid"])
-                    payment = verify_payment(pix["paymentId"])
-                    time.sleep(3)
-
-                chosen_coffee = None
-                for coffee in coffees:
-                    if coffee["container"] == str(confirmed_container):
-                        chosen_coffee = coffee["id"]
-                        break
-
-                print(
-                    f"Finished conversation, putting order of container {confirmed_container}, {confirmed_quantity} grams."
-                )
-
-                play_audio("Payment confirmed! Let's dispense!")
-
-                measure_coffee_queue.put(
-                    {
-                        "container_id": confirmed_container - 1,
-                        "weight": confirmed_quantity,
-                        "customer_id": customer,
-                        "coffee_id": chosen_coffee,
-                    }
-                )
-
+            play_audio(gpt_response.response)
+            if gpt_response.order_confirmed:
+                proceed_to_payment = True
                 break
+
             try:
                 capture_audio_event_flag.set()
                 send_to_arduino("UPDATE:STATE:LISTENING")
@@ -220,37 +152,55 @@ async def generate_response_async(
                 break
 
             user_response = await transcript(audio_buffer)
-            history.append({"role": "user", "content": user_response})
+            conversation_history.append({"role": "user", "content": user_response})
+
+        if proceed_to_payment:
+            print(f"Finished conversation, generating pix and waiting for deposit.")
+            pix = create_payment(gpt_response.total_price)
+            play_audio("Please scan the QR Code in the LCD screen to pay.")
+            send_to_arduino(f"UPDATE:PIX:{pix['payload']['payload']}")
+            payment = verify_payment(pix["paymentId"])
+            while not payment["paid"]:
+                print(payment["paid"])
+                payment = verify_payment(pix["paymentId"])
+                time.sleep(3)
+
+            chosen_coffee = None
+            for coffee in coffees:
+                if coffee["container"] == str(gpt_response.container_number):
+                    chosen_coffee = coffee["id"]
+                    break
+
+            print(
+                f"Finished conversation, putting order of container {gpt_response.container_number}, {confirmed_quantity} grams."
+            )
+
+            play_audio("Payment confirmed! Let's dispense!")
+
+            measure_coffee_queue.put(
+                {
+                    "container_id": gpt_response.container_number - 1,
+                    "weight": gpt_response.chosen_coffee_weight,
+                    "customer_id": customer,
+                    "coffee_id": chosen_coffee,
+                }
+            )
+            
 
 
 async def request(
-    state: dict[str, str], coffees: list, history: list, phase_prompt: str
-) -> tuple:
+    system_prompt: str, conversation_history: list[dict]
+):
+    messages = [{"role": "system", "content": system_prompt}]
+    messages.extend(conversation_history)
     response = await client.beta.chat.completions.parse(
         model="gpt-4o-mini",
-        messages=[
-            {
-                "role": "system",
-                "content": f"""You are a coffee vending machine with these coffee grains available: {json.dumps(coffees)}.  
-                You are selling in Reais, Brazil's currency. Do not speak portuguese.
-                Respond to this text according to the phase instructions. Answer in a text-to-speech friendly way, never use topics.
-                {phase_prompt}.
-                Continue this convesation with the user.
-                """,
-            }
-        ]
-        + (history if len(history) else []),
-        response_format=ResponseFormat,
+        messages=messages,
+        response_format=GPTInteraction,
     )
     response = json.loads(response.choices[0].message.content)
 
-    in_phase = response["in_phase"]
-    message = response["message"]
-    quantity = response["quantity"]
-    container = response["container"]
-    total = response["total"]
-
-    return state, in_phase, message, quantity, container, total
+    return GPTInteraction(**response)
 
 
 async def transcript(audio: list) -> str:
@@ -280,7 +230,6 @@ async def transcript(audio: list) -> str:
     print(f"User said: {user_response}")
     return user_response
 
-# # ##play audio sucks
 # def play_audio(text: str):
 #     print("Text to speech...")
 #     start = time.perf_counter()
@@ -304,6 +253,7 @@ async def transcript(audio: list) -> str:
 
 #     print("Finished playing sound")
 
+
 # ##play audio deepssek
 # async def play_audio(text: str):
 #     print("Text to speech...")
@@ -318,7 +268,7 @@ async def transcript(audio: list) -> str:
 #     process = await asyncio.create_subprocess_exec(
 #         "espeak", 
 #         "-ven+f3",  # English voice, female variant 3
-#         "-s150",     # Speed: 175 words per minute
+#         "-s175",     # Speed: 175 words per minute
 #         text,
 #         stdout=asyncio.subprocess.DEVNULL,  # Ignore stdout
 #         stderr=asyncio.subprocess.DEVNULL   # Ignore stderr
@@ -328,12 +278,9 @@ async def transcript(audio: list) -> str:
 #     await process.wait()
 
 
-
-
-
 def play_audio(text: str):
     print("Text to speech...")
-
+    text = text.replace("*", "")
     # Start TTS timing
     start = time.perf_counter()
 
@@ -344,7 +291,7 @@ def play_audio(text: str):
     subprocess.run([
         "espeak", 
         "-ven+f3",  # English voice, female variant 3
-        "-s145",     # Speed: 175 words per minute
+        "-s150",     # Speed: 175 words per minute
         text
     ], check=True)  # `check=True` ensures errors are raised
 

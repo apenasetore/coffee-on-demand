@@ -32,21 +32,21 @@ try:
 
         GPIO.output(DIR_PIN, GPIO.HIGH)
 
-        for _ in range(100):  # 200 passos (ajuste conforme necessário)
+        for _ in range(300):  # 200 passos (ajuste conforme necessário)
             GPIO.output(M2_STEP_PIN, GPIO.HIGH)
-            time.sleep(0.001)  # Tempo HIGH (ajuste para controle de velocidade)
+            time.sleep(0.0005)  # Tempo HIGH (ajuste para controle de velocidade)
             GPIO.output(M2_STEP_PIN, GPIO.LOW)
-            time.sleep(0.0012)  # Tempo LOW
+            time.sleep(0.0005)  # Tempo LOW
             print("Rotating")
 
 
         GPIO.output(DIR_PIN, GPIO.LOW) 
 
-        for _ in range(50):  # 200 passos (ajuste conforme necessário)
+        for _ in range(150):  # 200 passos (ajuste conforme necessário)
             GPIO.output(M2_STEP_PIN, GPIO.HIGH)
-            time.sleep(0.002)  # Tempo HIGH (ajuste para controle de velocidade)
+            time.sleep(0.0005)  # Tempo HIGH (ajuste para controle de velocidade)
             GPIO.output(M2_STEP_PIN, GPIO.LOW)
-            time.sleep(0.002)  # Tempo LOW
+            time.sleep(0.0005)  # Tempo LOW
             print("Rotating")
             
 except KeyboardInterrupt:

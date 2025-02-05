@@ -12,7 +12,7 @@ from embedded.camera import camera_thread
 
 from embedded.client_recognition import recognize_customer, generate_new_encodings
 
-from embedded.gpt import generate_response, play_audio
+from embedded.gpt_henrique import generate_response, play_audio
 
 from embedded.register import register_customer
 from embedded.motors import motor_task
@@ -62,6 +62,7 @@ if __name__ == "__main__":
             coffee_container,
         ),
     ).start()
+    
     multiprocessing.Process(
         target=dispense_task,
         daemon=True,
@@ -77,6 +78,7 @@ if __name__ == "__main__":
             removed_coffee_container,
         ),
     ).start()
+
     multiprocessing.Process(
         target=camera_thread,
         daemon=True,
@@ -142,7 +144,10 @@ if __name__ == "__main__":
             play_audio("Hello coffers! System will init in 3 seconds.")
             time.sleep(3)
             # recognize_customer_event_flag.set()
-            measure_coffee_queue.put({"container_id": 1, "weight": 20, "customer_id": -1, "coffee_id": 39})
+            # measure_coffee_queue.put({"container_id": 1, "weight": 50, "customer_id": -1, "coffee_id": 39})
+            purchase_queue.put(
+                {"weight": 50, "coffee_id": 12}
+            )
             time.sleep(100000)
     except KeyboardInterrupt:
         print("Finishing...")

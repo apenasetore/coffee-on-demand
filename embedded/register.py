@@ -1,8 +1,8 @@
 import asyncio
 import json
 import multiprocessing
-from embedded.gpt_dtos.dto import RegisterResponseFormat, ResponseStopFormat
-import embedded.gpt as gpt
+from embedded.gpt_dtos.dto import GPTInteractionRegistration
+import embedded.gpt_henrique as gpt
 import os
 from dotenv import load_dotenv
 import openai
@@ -19,30 +19,6 @@ API_KEY = os.getenv("API_KEY")
 client = openai.AsyncOpenAI(api_key=API_KEY)
 
 
-phase_prompt = [
-    {
-        "name": "AskToRegisterState",
-        "phase_identification": "Customer has given no information about his first and last name yet.",
-        "goal": "Figure out if the user wants to register as a customer to this service. If he does, get his firstname and lastname and return them in firstname and lastname vars, else return empty string",
-        "guideline": "Say the customer's order has finished being dispensed. Then, ask if the customer wants to register as a customer to this service. Ask if the costumer wants to go BC",
-    },
-    {
-        "name": "TakePictureState",
-        "phase_identification": "Customer has already given his first and last name.",
-        "goal": "Get the user to stand in front of the camera to take pictures for facial recognition. If you have the customer name, you are in this state.",
-        "guideline": "Ask the customer to stand in front of the camera with a clear view of their face to take pictures. Start a 3 second countdown to take the picture. Do no use emojis",
-    },
-]
-stop_prompt = [
-    {
-        "name": "Desinterested",
-        "goal": "if the user is not interested in registering to this service.",
-        "guideline": "Say goodbye to the customer.",
-        "phase_identification": "Customer has explicitly said he is not interested in registering.",
-    },
-]
-
-
 async def generate_response(
     audio_queue: multiprocessing.Queue,
     purchase_queue: multiprocessing.Queue,
@@ -53,71 +29,51 @@ async def generate_response(
     camera_event_flag,
     frames_queue,
 ):
-    global phase_prompt, stop_prompt
+    phases = [
+        {
+            "name": "AskToRegisterState",
+            "goal": "Figure out if the user wants to register as a customer to this service. If he does, get his firstname and lastname and return them in firstname and lastname vars, else return empty string",
+            "guideline": "Say the customer's order has finished being dispensed. Then, ask if the customer wants to register as a customer to this service. Ask if the costumer wants to go BC",
+        },
+        {
+            "name": "TakePictureState",
+            "goal": "Get the user to stand in front of the camera to take pictures for facial recognition. If you have the customer name, you are in this state.",
+            "guideline": "Ask the customer to stand in front of the camera with a clear view of their face to take pictures. Start a 3 second countdown to take the picture. Do no use emojis",
+        },
+        {
+            "name": "Incompatible",
+            "goal": "Politely redirect the user back to registration topics if the conversation strays.",
+            "guideline": "If the user discusses unrelated topics, gently bring the conversation back to the main topic",
+        },
+    ]
     while True:
 
         purchase = purchase_queue.get()
         weight = purchase["weight"]
         coffee_id = purchase["coffee_id"]
 
-        confirmed_firstname = None
-        confirmed_lastname = None
-        finished_conversation = False
-        history = []
-        while not finished_conversation:
+        main_prompt = f"""You are a coffee vending machine that sells coffee grains. Follow the instructions below:
+                - Your task is to analyze the conversation history and determine if the client wants to register on the machine.
+                - Answer in an extremely concise way, with very short text, without topics.
+                - Benefits of registration are: be recognized when arrive again in the machine, receive recommendations based on previous purchases.
+                """
 
-            state_check_tasks = []
-            for state in phase_prompt:
-                prompt = f"""Verify if the current phase is {state['name']}.
-                        To indentify if you are in this state use this information: {state["phase_identification"]}.
-                        The phase's goal is: "{state['goal']}". 
-                        Return true in in_phase in case the phase goal has not been accomplished. Return false in case the objective has been accomplished.
-                        To reach the goal, you must {state['guideline']}.
-                        Call the customer coffee enthusiast.
-                        ."""
+        conversation_history = []
+        register = False
+        while True:
+        
+            start = time.perf_counter()
+            gpt_response = await request(main_prompt, conversation_history)
+            print(f"Time checking main phases {time.perf_counter() - start}s")
+            print(gpt_response)
 
-                state_check_tasks.append(request(state, history, prompt))
+            conversation_history.append({"role": "assistant", "content": gpt_response.response})
 
-            results = await asyncio.gather(*state_check_tasks)
-            for state, in_phase, response, firstname, lastname in results:
-                if in_phase:
-                    print(f"State: {state['name']}")
-                    print(f"Goal: {state['goal']}")
-                    print(f"Guideline: {state['guideline']}")
-                    print(f"Message: {response}")
-                    history.append({"role": "system", "content": response})
-                    if lastname != "":
-                        confirmed_lastname = lastname
-                        print(f"Saving lastname {confirmed_lastname}")
-                    if firstname != "":
-                        confirmed_firstname = firstname
-                        print(f"Saving firstname {confirmed_firstname}")
-
-                    if state["name"] == "TakePictureState":
-                        gpt.play_audio(response)
-                        finished_conversation = True
-                        send_to_arduino("UPDATE:STATE:REGISTERING")
-                        pics = capture_pictures_base64(
-                            3, 2, camera_event_flag, frames_queue
-                        )
-                        gpt.play_audio(
-                            "I've already taken your pictures, now I will send them to registration! Thank you for your purchase."
-                        )
-                        new_id = register_new_customer(
-                            confirmed_firstname, confirmed_lastname, pics
-                        )
-                        coffee_api.add_purchase(new_id, weight, coffee_id)
-
-                        register_customer_event_flag.clear()
-                        generate_new_encodings_event_flag.set()
-                        print(f"Finished register phase conversation.")
-
-                    break
-
-            if finished_conversation:
+            gpt.play_audio(gpt_response.response)
+            if gpt_response.completed_conversation:
+                register = True if gpt_response.firstname and gpt_response.lastname else False
                 break
-
-            gpt.play_audio(response)
+            
             try:
                 capture_audio_event_flag.set()
                 send_to_arduino("UPDATE:STATE:LISTENING")
@@ -130,32 +86,27 @@ async def generate_response(
                 capture_audio_event_flag.clear()
                 register_customer_event_flag.clear()
                 recognize_customer_event_flag.set()
-                finished_conversation = True
                 break
 
             user_response = await gpt.transcript(audio_buffer)
-            history.append({"role": "user", "content": user_response})
+            conversation_history.append({"role": "user", "content": user_response})
 
-            has_to_stop_tasks = []
-            for sp in stop_prompt:
-                prompt = f"Verify if the current reason to stop is {sp['name']}. To determine if it is, figure out {sp['goal']}. Return true in stop in case the conversation must stop. To determine it, you must {sp['guideline']}., only generate a message if stop is True"
-                has_to_stop_tasks.append(has_to_stop(sp, history, prompt))
+        if register:
+            send_to_arduino("UPDATE:STATE:REGISTERING")
+            pics = capture_pictures_base64(
+                3, 2, camera_event_flag, frames_queue
+            )
+            gpt.play_audio(
+                "I've already taken your pictures, now I will send them to registration! Thank you for your purchase."
+            )
+            new_id = register_new_customer(
+                gpt_response.firstname, gpt_response.lastname, pics
+            )
+            coffee_api.add_purchase(new_id, weight, coffee_id)
 
-            await asyncio.gather(*has_to_stop_tasks)
-            for sp, stop, response in results:
-                if stop:
-                    print(f"State: {sp['name']}")
-                    print(f"Goal: {sp['goal']}")
-                    print(f"Guideline: {sp['guideline']}")
-                    print(f"Message: {response}")
-                    history.append({"role": "system", "content": response})
-                    gpt.play_audio(response)
-                    print(f"{coffee_id=} {weight=}")
-                    coffee_api.update_coffee_quantity(coffee_id, weight)
-                    register_customer_event_flag.clear()
-                    recognize_customer_event_flag.set()
-                    finished_conversation = True
-                    break
+            register_customer_event_flag.clear()
+            generate_new_encodings_event_flag.set()
+            print(f"Finished register phase conversation.")
 
 
 def register_new_customer(firstname: str, lastname: str, pics: list):
@@ -167,61 +118,19 @@ def register_new_customer(firstname: str, lastname: str, pics: list):
     return new_customer["customer"][0]["id"]
 
 
-async def request(state: dict[str, str], history: list, phase_prompt: str) -> tuple:
+async def request(
+    system_prompt: str, conversation_history: list[dict]
+):
+    messages = [{"role": "system", "content": system_prompt}]
+    messages.extend(conversation_history)
     response = await client.beta.chat.completions.parse(
-        model="gpt-3.5-turbo",
-        stream =True,
-        messages=[
-            {
-                "role": "system",
-                "content": f"""
-                You are a coffee vending machine in a registration phase that aims to register new customers. 
-                You provide only coffee grains and can register users with their consent.
-                Respond to this text according to the phase instructions. 
-                {phase_prompt}.
-                Continue this convesation with the user.
-                """,
-            }
-        ]
-        + (history if len(history) else []),
-        response_format=RegisterResponseFormat,
+        model="gpt-4o-mini",
+        messages=messages,
+        response_format=GPTInteractionRegistration,
     )
     response = json.loads(response.choices[0].message.content)
 
-    in_phase = response["in_phase"]
-    message = response["message"]
-    firstname = response["firstname"]
-    lastname = response["lastname"]
-
-    return state, in_phase, message, firstname, lastname
-
-
-async def has_to_stop(
-    stop_prompt: dict[str, str], history: list, phase_prompt: str
-) -> tuple:
-    response = await client.beta.chat.completions.parse(
-        model="gpt-3.5-turbo",
-        stream =True,
-        messages=[
-            {
-                "role": "system",
-                "content": f"""
-                    You are a coffee vending machine in a registration phase that aims to register new customers. 
-                    You provide only coffee grains and can register users with their consent.  
-                    Respond to this text according to the phase instructions: 
-                    {phase_prompt}.  
-                    Continue this conversation with the user.
-                    """,
-            }
-        ]
-        + (history if len(history) else []),
-        response_format=ResponseStopFormat,
-    )
-    response = json.loads(response.choices[0].message.content)
-    stop = response["stop"]
-    message = response["message"].replace("*", "")
-
-    return stop_prompt, stop, message
+    return GPTInteractionRegistration(**response)
 
 
 def capture_pictures_base64(picture_count, delay, camera_event_flag, frames_queue):

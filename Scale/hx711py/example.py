@@ -9,7 +9,9 @@ def cleanAndExit():
     print("Bye!")
     sys.exit()
 
+print("instance of HX711")
 hx = HX711(27,17)
+print("created instance")
 
 '''
 I've found out that, for some reason, the order of the bytes is not always the same between versions of python,
