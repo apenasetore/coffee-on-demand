@@ -42,9 +42,13 @@ def dispense_task(
 
         turn_on_cup_sensor.set()
         time.sleep(1)
+
         while removed_coffee_container.is_set():
             play_audio("Please put a coffee container in place!")
             time.sleep(3)
+
+        while not removed_coffee_container.is_set() and cup_in_place < 10:
+            cup_in_place += 1
 
         referenceUnit = 401339.77777777775 / 211
         hx.set_reference_unit(referenceUnit)
@@ -75,9 +79,14 @@ def dispense_task(
                 weight = 0
 
             print(f"Weight = {weight} and last valid weight = {last_reading}")
-            send_to_arduino(f"UPDATE:WEIGHT:{weight}")
+            print(weight*1.1)
+            if(weight*1.1>=requested_coffee_weight):
+                send_to_arduino(f"UPDATE:WEIGHT:{requested_coffee_weight*1.1}")
+            else:
+                send_to_arduino(f"UPDATE:WEIGHT:{weight}")
 
-            if requested_coffee_weight - weight <= 18:
+
+            if requested_coffee_weight - weight <= 1:
                 turn_on_motor_event_flag.clear()
                 print("Activating slow mode")
 

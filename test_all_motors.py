@@ -30,7 +30,7 @@ try:
 
         for motor in motors:
 
-            for i in range(5):
+            for i in range(4):
                 GPIO.output(DIR_PIN, GPIO.HIGH)
 
                 for _ in range(200):  # 200 passos (ajuste conforme necessário)

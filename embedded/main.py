@@ -140,7 +140,7 @@ if __name__ == "__main__":
             play_audio("Hello coffers! System will init in 3 seconds.")
             time.sleep(3)
             recognize_customer_event_flag.set()
-            # measure_coffee_queue.put({"container_id": 1, "weight": 50, "customer_id": -1, "coffee_id": 39})
+            # measure_coffee_queue.put({"container_id": 0, "weight": 20, "customer_id": -1, "coffee_id": 39})
             # purchase_queue.put(
             #     {"weight": 50, "coffee_id": 12}
             # )
