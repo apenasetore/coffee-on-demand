@@ -77,14 +77,14 @@ enum states
   registering
 };
 
+String pix;
+String  price;
 String received_message;
 
 states priorstate, state;
 
 int weight;
 int weightChanged = 0;
-String pix;
-float price, total;
 
 void setup()
 {
@@ -133,9 +133,7 @@ void updateInfo()
   {
     received_message = "";
     received_message = Serial.readStringUntil('\n');
-    Serial.println(received_message);
-    Serial.println(received_message.length());
-
+    
     if (received_message == "UPDATE:STATE:IDLE")
     {
       state = idle;
@@ -162,15 +160,28 @@ void updateInfo()
     }
 
     int index = received_message.indexOf("UPDATE:WEIGHT:");
+    
 
     if (index != -1)
     {
       String weightStr = received_message.substring(index + 14);
-      Serial.println(weightStr);
       weight = atoi(weightStr.c_str());
-      Serial.print("Updated weight: ");
-      Serial.println(weight);
       weightChanged = 1;
+    }
+
+    index = received_message.indexOf("UPDATE:PRICE:");
+    if (index != -1)
+    {
+        String priceString = received_message.substring(index + 13);
+
+        // Convertendo para um número inteiro
+        int priceInt = priceString.toInt();
+
+        // Convertendo para string no formato 00.00
+        char formattedPrice[10];
+        sprintf(formattedPrice, "R$ %02d.%02d", priceInt / 100, priceInt % 100);
+        price = formattedPrice;
+
     }
 
     index = received_message.indexOf("UPDATE:PIX:");
@@ -256,58 +267,63 @@ void listening_state()
 
 void dispensing_state()
 {
-
   if (state != priorstate)
   {
     priorstate = state;
     weightChanged = 0;
     tft.fillScreen(WHITE);
     tft.setTextColor(COFFEE_ON_DEMAND_1);
+    
+    // Display header
     tft.setCursor(24, 150);
     tft.setTextSize(2);
     tft.println("Dispensing...");
-    tft.setCursor(24, 185);
-    tft.setTextSize(1);
+    
 
-
+    // Display the weight of the coffee
     char dynamicString[20];
     sprintf(dynamicString, "%dg", weight);
     tft.setCursor(90, 230);
     tft.setTextSize(3);
     tft.println(dynamicString);
+    
   }
 
   if (weightChanged)
   {
     weightChanged = 0;
-    tft.fillRect(40, 170, 150, 100, WHITE);
+    // Clear the area that shows both weight and price.
+    tft.fillRect(40, 170, 150, 140, WHITE);
     
+    // Update weight display
     char dynamicString[20];
     sprintf(dynamicString, "%dg", weight);
-    
     if (strlen(dynamicString) == 2) {
       tft.setCursor(90, 230);
     } else if (strlen(dynamicString) == 3) {
       tft.setCursor(75, 230);
-    }
-    else if (strlen(dynamicString) == 4) {
+    } else if (strlen(dynamicString) == 4) {
       tft.setCursor(55, 230);
     }
     tft.setTextSize(3);
     tft.println(dynamicString);
+    
   }
 }
+
 
 void payment_state()
 {
 
   if (state != priorstate)
   {
+    // Display the value of the coffee (price)
     priorstate = state;
     tft.fillScreen(WHITE);
     drawFinalizado();
     displayQRcode(pix.c_str());
   }
+
 }
 
 void drawBigLogo()
@@ -324,10 +340,10 @@ void drawFinalizado()
   tft.write(0x02);
   tft.println();
   tft.setCursor(25, 77);
-  tft.setTextSize(1);
-  tft.println("To make the payment,");
+  tft.println(price);
   tft.setCursor(25, 96);
-  tft.println("read the QR-code below ");
+  tft.setTextSize(1);
+  tft.println("Read the QR-code below ");
   tft.setCursor(25, 115);
   tft.println("with your banking app");
 }
@@ -344,13 +360,14 @@ void initializeDisplay()
 }
 
 #define version 8
-uint8_t qrcodeData[301];
+uint8_t qrcodeData[310];
 
 void displayQRcode(const char *text)
 {
+  
   QRCode qrcode;
   int size = 4 * version + 17;
-
+  Serial.print(text);
   qrcode_initText(&qrcode, qrcodeData, version, 0, text);
 
   tft.fillRoundRect(position_x - border, position_y - border, size * qrPixel + border * 2, size * qrPixel + border * 2, 4, COFFEE_ON_DEMAND_2);
