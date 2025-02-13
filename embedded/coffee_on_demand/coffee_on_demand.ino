@@ -77,14 +77,14 @@ enum states
   registering
 };
 
+String pix;
+String  price;
 String received_message;
 
 states priorstate, state;
 
 int weight;
 int weightChanged = 0;
-String pix;
-String  price;
 
 void setup()
 {
@@ -173,8 +173,6 @@ void updateInfo()
     if (index != -1)
     {
         String priceString = received_message.substring(index + 13);
-        Serial.print("Updated string price: ");
-        Serial.println(priceString);
 
         // Convertendo para um número inteiro
         int priceInt = priceString.toInt();
@@ -183,8 +181,7 @@ void updateInfo()
         char formattedPrice[10];
         sprintf(formattedPrice, "R$ %02d.%02d", priceInt / 100, priceInt % 100);
         price = formattedPrice;
-        Serial.print("Updated price: ");
-        Serial.println(formattedPrice);
+
     }
 
     index = received_message.indexOf("UPDATE:PIX:");
@@ -363,13 +360,14 @@ void initializeDisplay()
 }
 
 #define version 8
-uint8_t qrcodeData[301];
+uint8_t qrcodeData[310];
 
 void displayQRcode(const char *text)
 {
+  
   QRCode qrcode;
   int size = 4 * version + 17;
-
+  Serial.print(text);
   qrcode_initText(&qrcode, qrcodeData, version, 0, text);
 
   tft.fillRoundRect(position_x - border, position_y - border, size * qrPixel + border * 2, size * qrPixel + border * 2, 4, COFFEE_ON_DEMAND_2);
