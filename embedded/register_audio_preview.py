@@ -55,46 +55,26 @@ def generate_response(
                 - Answer in an extremely concise way, with very short text, without topics.
                 - Benefits of registration are: be recognized when arrive again in the machine, receive recommendations based on previous purchases.
                 - Conversation phases: {phases}
+
+                You need to read the conversation check if all necessary information has been gotten.    
+                Remember to fill obrigatory fields:
+                
+                - firstname
+                - lastname
+                - user_intent_gotten (true if user does not want to register. In case the user want to register, it's true if and only if the user gives his first name and last name)
                 """
 
-        second_stage_prompt = f"""You are a conversation analyzer of a coffee vending machine and a customer.
-            You need to read the conversation check if all necessary information has been gotten.    
-            Remember to fill obrigatory fields:
-            
-            - firstname
-            - lastname
-            - user_intent_gotten"""
-
         conversation_history = []
-        text_conversation_history = []
         register = False
         while True:
-            global_start = time.perf_counter()
             start = time.perf_counter()
-            gpt_audio_response = gpt.generate_audio_response(
-                first_stage_prompt, conversation_history
-            )
-            print(f"TOTAL TIME UNTIL RESPONSE AUDIO PLAYS {time.perf_counter() - start}s")
-            print(f"Audio transcription: {gpt_audio_response.transcription}")
-            gpt.play_audio_from_base64(gpt_audio_response.audio_base64, blocking=False)
-
-            conversation_history.append(
-                {"role": "assistant", "audio": {"id": gpt_audio_response.audio_id}}
-            )
-            text_conversation_history.append(
-                {"role": "assistant", "content": gpt_audio_response.transcription}
+            gpt_data_response = gpt.generate_machine_response(
+                first_stage_prompt, conversation_history, GPTStage.REGISTRATION
             )
 
-            start = time.perf_counter()
-            gpt_data_response = gpt.generate_data_from_audio(
-                second_stage_prompt, text_conversation_history, GPTStage.REGISTRATION
-            )
-            print(f"TOTAL TIME GETTING DATA FROM CONVERSATION {time.perf_counter() - start}s")
-            print(f"Current data from conversation: {gpt_data_response}")
-
-            print(f"TOTAL TIME SPENT GENERATING RESPONSE {time.perf_counter() - global_start}s")
-
-            gpt.block_until_audio_complete()
+            conversation_history.append({"role": "assistant", "content": gpt_data_response.response})
+            print(f"Response in {time.perf_counter() - start}s: {gpt_data_response}")
+            gpt.play_audio(gpt_data_response.response)
 
             if gpt_data_response.user_intent_gotten:
                 register = (

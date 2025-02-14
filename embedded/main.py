@@ -137,8 +137,9 @@ if __name__ == "__main__":
     try:
         while True:
             print("System on")
-            play_audio("Hello coffers! System will init in 3 seconds.")
+            play_audio("Hello coffers! System will initialize in 3 seconds.")
             time.sleep(3)
+            # generate_new_encodings_event_flag.set()
             recognize_customer_event_flag.set()
             # measure_coffee_queue.put({"container_id": 0, "weight": 20, "customer_id": -1, "coffee_id": 39})
             # purchase_queue.put(
