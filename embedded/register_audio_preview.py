@@ -103,6 +103,9 @@ def generate_response(
 
         if register:
             send_to_arduino("UPDATE:STATE:REGISTERING")
+            gpt.play_audio(
+                "Please look at the camera while I take your pictures in 3, 2, 1, look at the little bird"
+            )
             pics = capture_pictures_base64(3, 2, camera_event_flag, frames_queue)
             gpt.play_audio(
                 "I've already taken your pictures, now I will send them to registration! Thank you for your purchase."

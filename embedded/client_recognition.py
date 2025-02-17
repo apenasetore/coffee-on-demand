@@ -83,6 +83,7 @@ def recognize_customer(
     while True:
         displayed_info = False
         face_detection_count = defaultdict(int)
+        
         while recognize_customer_event_flag.is_set():
 
             if not displayed_info:
@@ -128,6 +129,6 @@ def recognize_customer(
                     # register_customer_event_flag.set()
                     recognize_customer_event_flag.clear()
 
-            time.sleep(1)
+            time.sleep(0.3)
 
         time.sleep(2)

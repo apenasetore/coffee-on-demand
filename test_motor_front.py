@@ -23,7 +23,7 @@ GPIO.output(M2_STEP_PIN, GPIO.LOW)
 GPIO.output(M3_STEP_PIN, GPIO.LOW)
 GPIO.output(M4_STEP_PIN, GPIO.LOW)
 
-MOTOR = 1
+MOTOR = 2
 match(MOTOR):
     case 1:
         STEP_PIN = M1_STEP_PIN
@@ -42,19 +42,9 @@ try:
 
         for _ in range(300):  # 200 passos (ajuste conforme necessário)
             GPIO.output(STEP_PIN, GPIO.HIGH)
-            time.sleep(0.0005)  # Tempo HIGH (ajuste para controle de velocidade)
+            time.sleep(0.001)  # Tempo HIGH (ajuste para controle de velocidade)
             GPIO.output(STEP_PIN, GPIO.LOW)
-            time.sleep(0.0005)  # Tempo LOW
-            print("Rotating")
-
-
-        GPIO.output(DIR_PIN, GPIO.LOW) 
-
-        for _ in range(150):  # 200 passos (ajuste conforme necessário)
-            GPIO.output(STEP_PIN, GPIO.HIGH)
-            time.sleep(0.0005)  # Tempo HIGH (ajuste para controle de velocidade)
-            GPIO.output(STEP_PIN, GPIO.LOW)
-            time.sleep(0.0005)  # Tempo LOW
+            time.sleep(0.001)  # Tempo LOW
             print("Rotating")
             
 except KeyboardInterrupt:

@@ -272,7 +272,7 @@ async def transcript(audio: list) -> str:
             model="whisper-1",
             file=file,
             language="en",
-            prompt="Reais, Etore, Henrique, Maria Luiza, Francisco, Felipe, Heitor",
+            prompt="Reais, Etore, Henrique, Maria Luiza, Francisco, Felipe, Heitor, Agamemnon",
         )
         user_response = transcript.text
         print(f"Time to transcript in whisper = {time.perf_counter() - start}s")

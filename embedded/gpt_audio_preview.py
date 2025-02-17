@@ -28,7 +28,7 @@ from embedded.arduino import send_to_arduino
 load_dotenv()
 API_KEY = os.getenv("API_KEY")
 client = openai.OpenAI(api_key=API_KEY)
-STREAM_RESPONSE = True
+STREAM_RESPONSE = False
 
 def generate_response(
     customer_queue: multiprocessing.Queue,
@@ -163,7 +163,7 @@ def execute(
         if proceed_to_payment:
             print(f"Finished conversation, generating pix and waiting for deposit.")
             pix = create_payment(gpt_data_response.total_price)
-            play_audio("Please scan the QR Code in the LCD screen to pay. I will wait for 1 minute")
+            play_audio("Please scan the QR Code in the LCD screen to pay. I will wait for 3 minutes")
             send_to_arduino(f"UPDATE:PRICE:{int(gpt_data_response.total_price * 100)}")
             send_to_arduino(f"UPDATE:PIX:{pix['payload']['payload']}")
 
@@ -171,10 +171,12 @@ def execute(
                 payment_waiting = 0
                 payment = verify_payment(pix["paymentId"])
                 while not payment["paid"]:
+                    print("Verifying payment")
                     payment = verify_payment(pix["paymentId"])
+                    print(f"Payment verified as {payment}")
                     time.sleep(3)
                     payment_waiting += 3
-                    if payment_waiting >= 60:
+                    if payment_waiting >= 180:
                         break
 
                 if payment_waiting >= 60:
