@@ -36,7 +36,7 @@ To install CoffeeOnDemand, follow these steps:
    ```
 3. Install the dependencies:
    ```bash
-    pip install requirement
+    pip install requirements
    ```
 
 ## Usage
