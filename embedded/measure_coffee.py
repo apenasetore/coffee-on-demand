@@ -84,12 +84,7 @@ def dispense_task(
             if weight < 0:
                 weight = 0
 
-            print(f"Weight = {weight} and last valid weight = {last_reading}")
-            print(f"Fixed weight = {weight*1.1}")
-            if(weight >= requested_coffee_weight * 1.1):
-                send_to_arduino(f"UPDATE:WEIGHT:{requested_coffee_weight*1.1}")
-            else:
-                send_to_arduino(f"UPDATE:WEIGHT:{weight}")
+            send_to_arduino(f"UPDATE:WEIGHT:{weight}")
 
 
             # if requested_coffee_weight - weight <= 1:
@@ -161,7 +156,7 @@ def dispense_task(
                     if machine_stuck >= 50:
                         turn_on_motor_event_flag.clear()
                         turn_on_cup_sensor.clear()
-                        gpt.play_audio("Oh! I noticed that maube the machine is stuck. Sorry for the inconvenience. I will send a notification to the manager.")
+                        gpt.play_audio("Oh! I noticed that maybe the machine is stuck. Sorry for the inconvenience. I will send a notification to the manager.")
                         add_notification("Machine stuck")
                         while True:
                             time.sleep(10)
