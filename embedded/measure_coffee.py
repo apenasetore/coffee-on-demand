@@ -84,12 +84,7 @@ def dispense_task(
             if weight < 0:
                 weight = 0
 
-            print(f"Weight = {weight} and last valid weight = {last_reading}")
-            print(f"Fixed weight = {weight*1.1}")
-            if(weight >= requested_coffee_weight * 1.1):
-                send_to_arduino(f"UPDATE:WEIGHT:{requested_coffee_weight*1.1}")
-            else:
-                send_to_arduino(f"UPDATE:WEIGHT:{weight}")
+            send_to_arduino(f"UPDATE:WEIGHT:{weight}")
 
 
             # if requested_coffee_weight - weight <= 1:
