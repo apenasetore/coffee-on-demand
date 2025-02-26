@@ -31,7 +31,12 @@ def generate_response(
         {
             "name": "AskToRegisterState",
             "goal": "Figure out if the user wants to register as a customer to this service. If he does, get his firstname and lastname and return them in firstname and lastname vars, else return empty string",
-            "guideline": "Say the customer's order has finished being dispensed. Then, ask if the customer wants to register as a customer to this service. Ask if the costumer wants to go BC",
+            "guideline": "Say the customer's order has finished being dispensed. Then, ask if the customer wants to register as a customer to this service.",
+        },
+        {
+            "name": "ConfirmNameState",
+            "goal": "Confirm with the user the first name and last name, and proceed to TakePictureState.",
+            "guideline": "Summarize the user's information.",
         },
         {
             "name": "TakePictureState",
@@ -52,16 +57,16 @@ def generate_response(
 
         first_stage_prompt = f"""You are a coffee vending machine that sells coffee grains. Follow the instructions below:
                 - Your task is to analyze the conversation history and determine if the client wants to register on the machine.
-                - Answer in an extremely concise way, with very short text, without topics.
+                - Answer in an extremely concise way, without topics.
                 - Benefits of registration are: be recognized when arrive again in the machine, receive recommendations based on previous purchases.
                 - Conversation phases: {phases}
 
-                You need to read the conversation check if all necessary information has been gotten.    
+                You need to read the conversation to check if all necessary information has been gotten.    
                 Remember to fill obrigatory fields:
                 
                 - firstname
                 - lastname
-                - user_intent_gotten (true if user does not want to register. In case the user want to register, it's true if and only if the user gives his first name and last name)
+                - user_intent_gotten (true if user does not want to register. In case the user want to register, it's true if and only if the user gives his first name and last name and confirm his information)
                 """
 
         conversation_history = []
@@ -102,10 +107,10 @@ def generate_response(
             conversation_history.append({"role": "user", "content": user_response})
 
         if register:
-            send_to_arduino("UPDATE:STATE:REGISTERING")
             gpt.play_audio(
-                "Please look at the camera while I take your pictures in 3, 2, 1, look at the little bird"
+                "Please look at the camera while I take your pictures in 3, 2, 1."
             )
+            send_to_arduino("UPDATE:STATE:REGISTERING")
             pics = capture_pictures_base64(3, 2, camera_event_flag, frames_queue)
             gpt.play_audio(
                 "I've already taken your pictures, now I will send them to registration! Thank you for your purchase."

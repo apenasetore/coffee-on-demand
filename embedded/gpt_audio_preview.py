@@ -86,129 +86,133 @@ def execute(
             "guideline": "If the user discusses unrelated topics, gently bring the conversation back to coffee options or services. Example: 'I specialize in coffee selections and purchases. Would you like to explore our coffee varieties?'",
         },
     ]
-
-    while True:
-        customer = customer_queue.get()
-        print(f"GPT task received info that customer {customer} arrived")
-
-        start = time.perf_counter()
-
-        purchases = get_purchases(customer)
-        customer_info = purchases.get("customer")
-        purchase_history = purchases.get("purchases")
-        coffees = get_coffees(only_active=True)
-        filtered_coffees = [coffee for coffee in coffees if coffee["stock_grams"] > 0]
-
-        print(f"Time fetching CoffeeAPI info {time.perf_counter() - start}s")
-
-        name = customer_info.get("firstname") if customer_info else "coffee enthusiast"
-
-        first_stage_prompt = f"""You are a coffee vending machine that sells coffee grains. For the response, always generate audio. 
-            Follow the instructions below:  
-            - You are selling in Reais, Brazil's currency. Do not speak portuguese.
-            - Coffee price is calculated per gram (provide the total price).
-            - Coffees available and information: {json.dumps(filtered_coffees)}
-            - Coffee weight range is between 20g and 300g
-            - Your task is to analyze the conversation history and identify in what phase it is
-            - Phases of conversation: {phases}
-            - Answer in an concise way, very small text, without topics and DO NOT MENTION the phases in response.
-            You need to read the conversation check if all necessary information has been gotten.
-            
-            Remember to fill obrigatory fields:
-            
-            - chosen_coffee_weight
-            - container_number (is the number of the container where the chosen coffee is located at)
-            - total_price
-            - order_confirmed (if and only if the client confirm its order. Do not set it as true if assistant ask and the client didnt answer)
-            
-            Additional details:
-            - Client's name: {name}
-            - Purchase history: {json.dumps(purchase_history) if purchase_history else 'This client has no purchase history'}."""
-
-        conversation_history = []
-        text_conversation_history = []
-        proceed_to_payment = False
+    try:
         while True:
-            
+            customer = customer_queue.get()
+            print(f"GPT task received info that customer {customer} arrived")
+
             start = time.perf_counter()
-            gpt_data_response = generate_machine_response(
-                first_stage_prompt, conversation_history
-            )
-            
-            conversation_history.append({"role": "assistant", "content": gpt_data_response.response})
-            print(f"Response in {time.perf_counter() - start}s: {gpt_data_response}")
-            play_audio(gpt_data_response.response)
-            
-            if gpt_data_response.order_confirmed:
-                proceed_to_payment = True
-                break
 
-            try:
-                capture_audio_event_flag.set()
-                send_to_arduino("UPDATE:STATE:LISTENING")
-                audio_buffer = audio_queue.get(timeout=20)
-                print("Got audio from queue")
-                send_to_arduino("UPDATE:STATE:PROCESSING")
-            except Exception as e:
-                print("No response given by the customer, restarting flow")
-                capture_audio_event_flag.clear()
-                play_audio("Oh, I think you are not here anymore. Let's move on.")
-                recognize_customer_event_flag.set()
-                break
+            purchases = get_purchases(customer)
+            customer_info = purchases.get("customer")
+            purchase_history = purchases.get("purchases")
+            coffees = get_coffees(only_active=True)
+            filtered_coffees = [coffee for coffee in coffees if coffee["stock_grams"] > 0]
 
-            user_response = transcript(audio_buffer)
-            conversation_history.append({"role": "user", "content": user_response})
-            text_conversation_history.append({"role": "user", "content": user_response})
+            print(f"Time fetching CoffeeAPI info {time.perf_counter() - start}s")
 
-        if proceed_to_payment:
-            print(f"Finished conversation, generating pix and waiting for deposit.")
-            pix = create_payment(gpt_data_response.total_price)
-            play_audio("Please scan the QR Code in the LCD screen to pay. I will wait for 3 minutes")
-            send_to_arduino(f"UPDATE:PRICE:{int(gpt_data_response.total_price * 100)}")
-            send_to_arduino(f"UPDATE:PIX:{pix['payload']['payload']}")
+            name = customer_info.get("firstname") if customer_info else "coffee enthusiast"
 
-            try:
-                payment_waiting = 0
-                payment = verify_payment(pix["paymentId"])
-                while not payment["paid"]:
-                    print("Verifying payment")
-                    payment = verify_payment(pix["paymentId"])
-                    print(f"Payment verified as {payment}")
-                    time.sleep(3)
-                    payment_waiting += 3
-                    if payment_waiting >= 180:
-                        break
+            first_stage_prompt = f"""You are a coffee vending machine that sells coffee grains. For the response, always generate audio. 
+                Follow the instructions below:  
+                - You are selling in Reais, Brazil's currency. Do not speak portuguese.
+                - Coffee price is calculated per gram (provide the total price).
+                - Coffees available and information: {json.dumps(filtered_coffees)}
+                - Coffee weight range is between 20g and 300g
+                - Your task is to analyze the conversation history and identify in what phase it is
+                - Phases of conversation: {phases}
+                - Answer in an concise way, very small text, without topics and DO NOT MENTION the phases in response.
+                You need to read the conversation check if all necessary information has been gotten.
+                
+                Remember to fill obrigatory fields:
+                
+                - chosen_coffee_weight
+                - container_number (is the number of the container where the chosen coffee is located at)
+                - total_price
+                - order_confirmed (if and only if the client confirm its order. Do not set it as true if assistant ask and the client didnt answer)
+                
+                Additional details:
+                - Client's name: {name}
+                - Purchase history: {json.dumps(purchase_history) if purchase_history else 'This client has no purchase history'}."""
 
-                if payment_waiting >= 60:
-                    play_audio("Oh, I think you are not here anymore. Let's move on.")
-                    recognize_customer_event_flag.set()
-                    continue
-            except Exception as e:
-                print(f"Payment failed: {e}")
-                play_audio("Oh, something wrong occurred with your payment, sorry.")
-                recognize_customer_event_flag.set()
-                continue
-
-            chosen_coffee = None
-            for coffee in filtered_coffees:
-                if coffee["container"] == str(gpt_data_response.container_number):
-                    chosen_coffee = coffee["id"]
+            conversation_history = []
+            text_conversation_history = []
+            proceed_to_payment = False
+            while True:
+                
+                start = time.perf_counter()
+                gpt_data_response = generate_machine_response(
+                    first_stage_prompt, conversation_history
+                )
+                
+                conversation_history.append({"role": "assistant", "content": gpt_data_response.response})
+                print(f"Response in {time.perf_counter() - start}s: {gpt_data_response}")
+                play_audio(gpt_data_response.response)
+                
+                if gpt_data_response.order_confirmed:
+                    proceed_to_payment = True
                     break
 
-            print(
-                f"Finished conversation, putting order of container {gpt_data_response.container_number}, {gpt_data_response.chosen_coffee_weight} grams."
-            )
+                try:
+                    capture_audio_event_flag.set()
+                    send_to_arduino("UPDATE:STATE:LISTENING")
+                    audio_buffer = audio_queue.get(timeout=20)
+                    print("Got audio from queue")
+                    send_to_arduino("UPDATE:STATE:PROCESSING")
+                except Exception as e:
+                    print("No response given by the customer, restarting flow")
+                    capture_audio_event_flag.clear()
+                    play_audio("Oh, I think you are not here anymore. Let's move on.")
+                    recognize_customer_event_flag.set()
+                    break
 
-            play_audio("Payment confirmed! Let's dispense!")
+                user_response = transcript(audio_buffer)
+                conversation_history.append({"role": "user", "content": user_response})
+                text_conversation_history.append({"role": "user", "content": user_response})
 
-            measure_coffee_queue.put(
-                {
-                    "container_id": gpt_data_response.container_number - 1,
-                    "weight": gpt_data_response.chosen_coffee_weight,
-                    "customer_id": customer,
-                    "coffee_id": chosen_coffee,
-                }
-            )
+            if proceed_to_payment:
+                print(f"Finished conversation, generating pix and waiting for deposit.")
+                pix = create_payment(gpt_data_response.total_price)
+                play_audio("Please scan the QR Code in the LCD screen to pay. I will wait for 3 minutes")
+                send_to_arduino(f"UPDATE:PRICE:{int(gpt_data_response.total_price * 100)}")
+                send_to_arduino(f"UPDATE:PIX:{pix['payload']['payload']}")
+
+                try:
+                    payment_waiting = 0
+                    payment = verify_payment(pix["paymentId"])
+                    while not payment["paid"]:
+                        print("Verifying payment")
+                        payment = verify_payment(pix["paymentId"])
+                        print(f"Payment verified as {payment}")
+                        time.sleep(3)
+                        payment_waiting += 3
+                        if payment_waiting >= 180:
+                            break
+
+                    if payment_waiting >= 60:
+                        play_audio("Oh, I think you are not here anymore. Let's move on.")
+                        recognize_customer_event_flag.set()
+                        continue
+                except Exception as e:
+                    print(f"Payment failed: {e}")
+                    play_audio("Oh, something wrong occurred with your payment, sorry.")
+                    recognize_customer_event_flag.set()
+                    continue
+
+                chosen_coffee = None
+                for coffee in filtered_coffees:
+                    if coffee["container"] == str(gpt_data_response.container_number):
+                        chosen_coffee = coffee["id"]
+                        break
+
+                print(
+                    f"Finished conversation, putting order of container {gpt_data_response.container_number}, {gpt_data_response.chosen_coffee_weight} grams."
+                )
+
+                play_audio("Payment confirmed! Let's dispense!")
+
+                measure_coffee_queue.put(
+                    {
+                        "container_id": gpt_data_response.container_number - 1,
+                        "weight": gpt_data_response.chosen_coffee_weight,
+                        "customer_id": customer,
+                        "coffee_id": chosen_coffee,
+                    }
+                )
+    except Exception as e:
+        while True:
+            print("Problem in the machine")
+            time.sleep(1)
 
 def generate_machine_response(system_prompt: str, conversation_history: list[dict], stage: GPTStage = GPTStage.NORMAL_FLOW) -> GPTDataResponse | GPTRegistrationDataResponse:
     messages = [{"role": "system", "content": system_prompt}]
@@ -259,9 +263,9 @@ def transcript(audio: list) -> str:
 
 
 def play_audio(text: str):
-    send_to_arduino("UPDATE:STATE:TALKING")
 
     if STREAM_RESPONSE:
+        send_to_arduino("UPDATE:STATE:TALKING")
         print("Streaming audio")
         player_stream = pyaudio.PyAudio().open(format=pyaudio.paInt16, channels=1, rate=24000, output=True)
         stream_start = False
@@ -292,6 +296,7 @@ def play_audio(text: str):
             response_format='pcm'
         )
 
+        send_to_arduino("UPDATE:STATE:TALKING")
         for chunk in response.iter_bytes(chunk_size=1024):
             audio_buffer += chunk
 
