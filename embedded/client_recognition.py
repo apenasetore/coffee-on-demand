@@ -83,51 +83,55 @@ def recognize_customer(
     while True:
         displayed_info = False
         face_detection_count = defaultdict(int)
-        while recognize_customer_event_flag.is_set():
+        
+        while not recognize_customer_event_flag.is_set():
+            pass
 
-            if not displayed_info:
-                displayed_info = True
-                send_to_arduino("UPDATE:STATE:IDLE")
+        if not displayed_info:
+            displayed_info = True
+            send_to_arduino("UPDATE:STATE:IDLE")
 
-            if load_encodings_event_flag.is_set():
-                data = load_model()
-                load_encodings_event_flag.clear()
+        if load_encodings_event_flag.is_set():
+            data = load_model()
+            load_encodings_event_flag.clear()
 
-            camera_event_flag.set()
-            frame = frames_queue.get()
+        camera_event_flag.set()
+        frame = frames_queue.get()
 
-            print("Looking for someone")
+        print("Looking for someone")
 
-            face_locations = face_recognition.face_locations(frame)
-            face_encodings = face_recognition.face_encodings(frame, face_locations)
-            for encoding in face_encodings:
-                matches = face_recognition.compare_faces(data["encodings"], encoding)
-                customer_id = -1
+        face_locations = face_recognition.face_locations(frame)
+        face_encodings = face_recognition.face_encodings(frame, face_locations)
+        for encoding in face_encodings:
+            matches = face_recognition.compare_faces(data["encodings"], encoding)
+            customer_id = -1
 
-                if True in matches:
-                    matchedIdxs = [i for (i, b) in enumerate(matches) if b]
-                    counts = {}
+            if True in matches:
+                matchedIdxs = [i for (i, b) in enumerate(matches) if b]
+                counts = {}
 
-                    for i in matchedIdxs:
-                        customer_id = data["names"][i]
-                        counts[customer_id] = counts.get(customer_id, 0) + 1
+                for i in matchedIdxs:
+                    customer_id = data["names"][i]
+                    counts[customer_id] = counts.get(customer_id, 0) + 1
 
-                    customer_id = max(counts, key=counts.get)
-                    face_detection_count[customer_id] += 1
-                    print(f"Recognized {customer_id}")
-
-            if face_locations and customer_id == -1:
+                customer_id = max(counts, key=counts.get)
                 face_detection_count[customer_id] += 1
                 print(f"Recognized {customer_id}")
 
-            print(face_detection_count)
-            for customer_id, count in face_detection_count.items():
-                if count >= 1:
-                    customer_queue.put(customer_id)
-                    gpt.play_audio("Oh, hi there!")
-                    # register_customer_event_flag.set()
-                    recognize_customer_event_flag.clear()
+        if face_locations and customer_id == -1:
+            face_detection_count[customer_id] += 1
+            print(f"Recognized {customer_id}")
 
-            time.sleep(1)
+        print(face_detection_count)
+        for customer_id, count in face_detection_count.items():
+            if count >= 1:
+                customer_queue.put(customer_id)
+                gpt.play_audio("Oh, hi there!")
+                # register_customer_event_flag.set()
+                recognize_customer_event_flag.clear()
+                camera_event_flag.clear()
+                break
+
+        time.sleep(0.3)
 
         time.sleep(2)

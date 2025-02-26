@@ -72,7 +72,7 @@ async def generate_response_async(
         {
             "name": "QuantityState",
             "goal": "Determine how much coffee the user wants to purchase.",
-            "guideline": "Ask the user to specify the quantity of coffee they would like, within the range of 20 to 300 grams. Verify stock availability and provide feedback if the desired quantity exceeds the available stock. If necessary, suggest alternative quantities.Do not make topics, be concise",
+            "guideline": "Ask the user to specify the quantity of coffee they would like, within the range of 20 to 300 grams and the price must be at least 5 reais. Verify stock availability and provide feedback if the desired quantity exceeds the available stock. If necessary, suggest alternative quantities.Do not make topics, be concise",
         },
         {
             "name": "OrderConfirmationState",
@@ -272,7 +272,7 @@ async def transcript(audio: list) -> str:
             model="whisper-1",
             file=file,
             language="en",
-            prompt="Reais, Etore, Henrique, Maria Luiza, Francisco, Felipe, Heitor",
+            prompt="Reais, Etore, Henrique, Maria Luiza, Francisco, Felipe, Heitor, Agamemnon",
         )
         user_response = transcript.text
         print(f"Time to transcript in whisper = {time.perf_counter() - start}s")

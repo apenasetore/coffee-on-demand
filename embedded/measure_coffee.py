@@ -133,8 +133,8 @@ def dispense_task(
                 weight_reduction = True
                 weight_reduction_count += 1
 
-                if weight_reduction_count >= 5:
-                    gpt.play_audio("I think ypu are trying to steal coffee, notifying manager.")
+                if weight_reduction_count >= 8:
+                    gpt.play_audio("I think you are trying to steal coffee, notifying manager.")
                     add_notification("Coffee has been stolen!")
                     while True:
                         time.sleep(10)
