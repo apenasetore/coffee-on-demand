@@ -1,6 +1,4 @@
 import cv2
-
-
 import pyaudio
 
 def list_audio_devices():
