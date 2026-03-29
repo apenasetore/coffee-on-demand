@@ -34,7 +34,7 @@ numpy==2.1.2
 openai==1.52.2
 pandas==2.2.3
 pdf_reports==0.3.7
-pillow==10.4.0
+pillow==12.1.1
 propcache==0.2.0
 psycopg2-binary==2.9.10
 PyAudio==0.2.14
